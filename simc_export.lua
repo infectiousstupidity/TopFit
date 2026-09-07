@@ -122,6 +122,37 @@ local RACE_TO_SIMC = {
 	BloodElf = "blood_elf",
 }
 
+-- Detects race based on known racial spells in the player's spellbook
+local function GetExportRace()
+    local RACIAL_TO_SIMC = {
+        ["Blood Fury"] = "orc",
+        ["Berserking"] = "troll",
+        ["War Stomp"] = "tauren",
+        ["Will of the Forsaken"] = "undead",
+        ["Arcane Torrent"] = "blood_elf",
+        ["Gift of the Naaru"] = "draenei",
+        ["Every Man for Himself"] = "human",
+        ["Stoneform"] = "dwarf",
+        ["Escape Artist"] = "gnome",
+        ["Shadowmeld"] = "night_elf",
+    }
+
+    -- Scan player spellbook for active racial abilities
+    local i = 1
+    while true do
+        local spellName = GetSpellBookItemName(i, BOOKTYPE_SPELL)
+        if not spellName then break end
+        if RACIAL_TO_SIMC[spellName] then
+            return RACIAL_TO_SIMC[spellName]
+        end
+        i = i + 1
+    end
+
+    -- Fallback to native client unit race if no custom racial is detected
+    local _, raceToken = UnitRace("player")
+    return RACE_TO_SIMC[raceToken] or "orc"
+end
+
 -- maps internal ITEM_MOD_* keys to this SimC build's short stat tokens
 local STAT_TO_SIMC = {
 	ITEM_MOD_STRENGTH_SHORT                 = "str",
@@ -412,6 +443,54 @@ local function BonusTableToSimcBlob(bonusTable)
 	return table.concat(parts, "_")
 end
 
+-- Extracts the slugified name of a meta gem (e.g., "Relentless Earthsiege Diamond" -> "relentless_earthsiege")
+local function GetMetaGemSlug(itemLink)
+    if not itemLink then return nil end
+    for i = 1, 4 do
+        local gemName, gemLink = GetItemGem(itemLink, i)
+        local targetName = gemName
+        if not targetName and gemLink then
+            targetName = GetItemInfo(gemLink)
+        end
+
+        if targetName and (string.find(targetName, "Diamond") or string.find(targetName, "Meta")) then
+            local cleanName = string.gsub(targetName, "%s*[Dd]iamond%s*", "")
+            cleanName = string.gsub(cleanName, "%s*[Mm]eta%s*", "")
+            return TopFit:Slugify(cleanName)
+        end
+    end
+    return nil
+end
+
+-- Builds the gems= string combining meta gem name slugs and flat stat tokens
+local function BuildGemsBlob(itemTable)
+    if not itemTable then return nil end
+    local parts = {}
+
+    -- 1. Extract meta gem slug if present
+    if itemTable.itemLink then
+        local metaSlug = GetMetaGemSlug(itemTable.itemLink)
+        if metaSlug then
+            table.insert(parts, metaSlug)
+        end
+    end
+
+    -- 2. Append flat stat tokens
+    if itemTable.gemBonus then
+        for stat, value in pairs(itemTable.gemBonus) do
+            if stat ~= "ITEM_MOD_CRIT_DAMAGE_BONUS_SHORT" then
+                local token = STAT_TO_SIMC[stat]
+                if token and value and value ~= 0 then
+                    table.insert(parts, tostring(math.floor(value + 0.5)) .. token)
+                end
+            end
+        end
+    end
+
+    if #parts == 0 then return nil end
+    return table.concat(parts, "_")
+end
+
 -- ============================================================================
 -- MAIN SIMC EXPORT ENGINE
 -- ============================================================================
@@ -424,8 +503,7 @@ function TopFit:GenerateSimcExportString()
 		return nil
 	end
 
-	local _, raceToken = UnitRace("player")
-	local simcRace = RACE_TO_SIMC[raceToken]
+	local simcRace = GetExportRace()
 
 	local lines = {}
 	tinsert(lines, simcClass .. "=" .. (UnitName("player") or "Unknown"))
@@ -476,7 +554,7 @@ function TopFit:GenerateSimcExportString()
 			local statsBlob = itemTable and BonusTableToSimcBlob(itemTable.itemBonus)
 			if statsBlob then tinsert(fieldParts, "stats=" .. statsBlob) end
 
-			local gemsBlob = itemTable and BonusTableToSimcBlob(itemTable.gemBonus)
+			local gemsBlob = itemTable and BuildGemsBlob(itemTable)
 			if gemsBlob then tinsert(fieldParts, "gems=" .. gemsBlob) end
 
 			local enchantBlob = itemTable and BonusTableToSimcBlob(itemTable.enchantBonus)

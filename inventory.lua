@@ -71,244 +71,263 @@ end
 -- this does not return information which might change, only things you can get from the item link
 function TopFit:GetItemInfoTable(item)
     local itemName, itemLink, itemQuality, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture = GetItemInfo(item)
-    if itemLink then
-        -- generate item info
-        local itemID = string.gsub(itemLink, ".*|Hitem:([0-9]*):.*", "%1")
-        itemID = tonumber(itemID)
-    
-        local enchantID = string.gsub(itemLink, ".*|Hitem:[0-9]*:([0-9]*):.*", "%1")
-        enchantID = tonumber(enchantID)
-        
-        -- item stats
-        local itemBonus = GetItemStats(itemLink)
+    if not itemLink then return nil end
 
-        -- weapon speed isn't a real "bonus" stat -- GetItemStats never returns it, since it's a
-        -- base item property, not something itemization adds on top. Some specs want to weight
-        -- it directly though (e.g. wanting a slow main hand), so parse it from the tooltip (via
-        -- simc_export.lua's shared parser) and fold it in as a pseudo-stat like any other.
-        -- Guarded with TopFit.ParseWeaponTooltip existing in case simc_export.lua didn't load.
-        if TopFit.GetSimcWeaponType and TopFit:GetSimcWeaponType(itemLink) then
-            local weaponSpeed = TopFit:ParseWeaponTooltip(itemLink)
-            if weaponSpeed and weaponSpeed > 0 then
-                itemBonus["TOPFIT_WEAPON_SPEED"] = weaponSpeed
-            end
+    -- Extract IDs for unique cache key
+    local itemID = string.match(itemLink, "item:(%d+)")
+    local enchantID = string.match(itemLink, "item:%d+:(%d+)") or "0"
+    local g1, g2, g3, g4 = string.match(itemLink, "item:%d+:%d+:(%d+):(%d+):(%d+):(%d+)")
+    local cacheKey = string.format("%s:%s:%s:%s:%s:%s", itemID or "0", enchantID, g1 or "0", g2 or "0", g3 or "0", g4 or "0")
+
+    -- 1. SavedVariables Cache Lookup
+    TopFit.db = TopFit.db or {}
+    TopFit.db.global = TopFit.db.global or {}
+    TopFit.db.global.itemCache = TopFit.db.global.itemCache or {}
+
+    if TopFit.db.global.itemCache[cacheKey] then
+        return TopFit.db.global.itemCache[cacheKey]
+    end
+
+    itemID = tonumber(itemID)
+    enchantID = tonumber(enchantID)
+
+    -- 2. Base Item Stats
+    local itemBonus = GetItemStats(itemLink) or {}
+
+    if TopFit.GetSimcWeaponType and TopFit:GetSimcWeaponType(itemLink) then
+        local weaponSpeed = TopFit.ParseWeaponTooltip and TopFit:ParseWeaponTooltip(itemLink)
+        if weaponSpeed and weaponSpeed > 0 then
+            itemBonus["TOPFIT_WEAPON_SPEED"] = weaponSpeed
         end
-        
-        -- gems
-        local gemBonus = {}
-        local gems = {}
-        local filledSocketColors = {}
-        for i = 1, 3 do
-            local _, gem = GetItemGem(item, i) -- name, itemlink
-            if gem then
-                gems[i] = gem
-                
-                local gemID = string.gsub(gem, ".*|Hitem:([0-9]*):.*", "%1")
-                gemID = tonumber(gemID)
-                if (TopFit.gemIDs[gemID]) then
-                    -- collect stats
-                    filledSocketColors[i] = TopFit.gemIDs[gemID].colors
-                    
-                    for stat, value in pairs(TopFit.gemIDs[gemID].stats) do
-                        if (gemBonus[stat]) then
-                            gemBonus[stat] = gemBonus[stat] + value
-                        else
-                            gemBonus[stat] = value
-                        end
+    end
+
+    local gems = {}
+    for i = 1, 4 do
+        local gemName, gemLink = GetItemGem(item, i)
+        if gemName or gemLink then
+            gems[i] = gemLink or gemName
+        end
+    end
+
+    -- 3. Unified Main Item Tooltip Scanning
+    local gemBonus = {}
+    local enchantBonus = {}
+    local emptySocketColors = {}
+    local socketBonusInfo = nil
+    local filledSocketColors = {}
+
+    TopFit.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    TopFit.scanTooltip:SetHyperlink(itemLink)
+    local numLines = TopFit.scanTooltip:NumLines()
+
+    local socketBonusString = _G["ITEM_SOCKET_BONUS"] or "Socket Bonus: %s"
+    socketBonusString = string.gsub(socketBonusString, "%%s", "(.*)")
+
+    local socketColorPatterns = {
+        RED = _G["EMPTY_SOCKET_RED"],
+        YELLOW = _G["EMPTY_SOCKET_YELLOW"],
+        BLUE = _G["EMPTY_SOCKET_BLUE"],
+        META = _G["EMPTY_SOCKET_META"],
+        PRISMATIC = _G["EMPTY_SOCKET_PRISMATIC"],
+    }
+
+    -- Helper to parse stat lines into target tables
+    local function ParseStatLine(lineText, targetTable)
+        -- Strip parenthesized values e.g. "(+1.30%, +1.00% Spell)"
+        local cleanLine = string.gsub(lineText, "%(.-%)", "")
+
+        -- Handle "+X All Stats" (e.g., Enchanted / Nightmare Tear, Prismatic Sphere)
+        local allStatsVal = string.match(cleanLine, "%+?(%d+)%s+[Aa]ll%s+[Ss]tats")
+        if allStatsVal then
+            local val = tonumber(allStatsVal) or 0
+            targetTable["ITEM_MOD_STRENGTH_SHORT"] = (targetTable["ITEM_MOD_STRENGTH_SHORT"] or 0) + val
+            targetTable["ITEM_MOD_AGILITY_SHORT"] = (targetTable["ITEM_MOD_AGILITY_SHORT"] or 0) + val
+            targetTable["ITEM_MOD_STAMINA_SHORT"] = (targetTable["ITEM_MOD_STAMINA_SHORT"] or 0) + val
+            targetTable["ITEM_MOD_INTELLECT_SHORT"] = (targetTable["ITEM_MOD_INTELLECT_SHORT"] or 0) + val
+            targetTable["ITEM_MOD_SPIRIT_SHORT"] = (targetTable["ITEM_MOD_SPIRIT_SHORT"] or 0) + val
+        end
+
+        -- Handle standard stats
+        for _, sTable in pairs(TopFit.statList) do
+            for _, statCode in pairs(sTable) do
+                local statName = _G[statCode]
+                if statName and statName ~= "" and string.find(cleanLine, statName) then
+                    local pat1 = "%+?(%d+)%s*" .. statName
+                    local pat2 = statName .. "%s*%+?(%d+)"
+                    local val = tonumber(string.match(cleanLine, pat1) or string.match(cleanLine, pat2)) or 0
+                    if val > 0 then
+                        targetTable[statCode] = (targetTable[statCode] or 0) + val
                     end
-                else
-                    -- unknown gem, tell the user
-                    TopFit:Warning("Could not identify gem "..i.." ("..gem..") of your "..itemLink..". Please tell the author so its stats can be added.")
                 end
             end
         end
-        
-        -- Empty sockets and the socket bonus text/value. Scanned unconditionally now (previously
-        -- gated behind "at least one gem already socketed", which meant a completely ungemmed item
-        -- never got its socket bonus parsed at all). Empty socket colors are read via Blizzard's
-        -- own EMPTY_SOCKET_* global strings, the same style of locale-safe matching already used
-        -- for ITEM_SOCKET_BONUS just below -- this hasn't been checked against a live client, so
-        -- treat it as the standard approach rather than a confirmed one.
-        --
-        -- Socket-bonus-aware gem valuation (see GetPotentialGemScore in calculation.lua) only
-        -- applies when EVERY socket on the item is empty. For items with a mix of filled/empty
-        -- sockets, an already-filled socket's REQUIRED color can't be reliably read back out of
-        -- the tooltip the same way (it shows the gem's name instead of a bare color label once
-        -- filled), so those items fall back to independent best-gem-per-empty-socket with no
-        -- bonus consideration -- a known, deliberate scope limit, not an oversight.
-        local emptySocketColors = {}
-        local socketBonusInfo = nil
-        do
-            TopFit.scanTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
-            TopFit.scanTooltip:SetHyperlink(itemLink)
-            local numLines = TopFit.scanTooltip:NumLines()
-            
-            local socketBonusString = _G["ITEM_SOCKET_BONUS"] -- "Socket Bonus: %s" in enUS client, for example
-            socketBonusString = string.gsub(socketBonusString, "%%s", "(.*)")
-            
-            local socketColorPatterns = {
-                RED = _G["EMPTY_SOCKET_RED"],
-                YELLOW = _G["EMPTY_SOCKET_YELLOW"],
-                BLUE = _G["EMPTY_SOCKET_BLUE"],
-                META = _G["EMPTY_SOCKET_META"],
-                PRISMATIC = _G["EMPTY_SOCKET_PRISMATIC"],
-            }
-            
-            local socketBonus = nil
-            local socketBonusIsActive = false
-            for i = 1, numLines do
-                local leftLine = getglobal("TFScanTooltip".."TextLeft"..i)
-                local leftLineText = leftLine:GetText()
-                
-                if leftLineText and string.find(leftLineText, socketBonusString) then
-                    if leftLine.GetTextColor then
-                        socketBonusIsActive = (leftLine:GetTextColor() == 0) -- green's red component is 0, but grey's red component is .5
-                    else
-                        socketBonusIsActive = true
-                    end
-                    socketBonus = string.gsub(leftLineText, "^"..socketBonusString.."$", "%1")
-                elseif leftLineText then
-                    for color, pattern in pairs(socketColorPatterns) do
-                        if pattern and leftLineText == pattern then
-                            tinsert(emptySocketColors, color)
-                        end
-                    end
-                end
+
+        -- Check Meta Gem % Critical Damage
+        if string.find(cleanLine, "Critical Damage") then
+            local critDmgVal = tonumber(string.match(cleanLine, "(%d+)%%")) or 0
+            if critDmgVal > 0 then
+                targetTable["ITEM_MOD_CRIT_DAMAGE_BONUS_SHORT"] = (targetTable["ITEM_MOD_CRIT_DAMAGE_BONUS_SHORT"] or 0) + critDmgVal
             end
-            
-            if (socketBonusIsActive) then
-                -- currently-active bonus: add its stats directly to gemBonus, same as before
-                for _, sTable in pairs(TopFit.statList) do
-                    for _, statCode in pairs(sTable) do
-                        if (string.find(socketBonus, _G[statCode])) then
-                            local bonusValue = string.gsub(socketBonus, _G[statCode], "")
-                            bonusValue = (tonumber(bonusValue) or 0)
-                            if (gemBonus[statCode]) then
-                                gemBonus[statCode] = gemBonus[statCode] + bonusValue
-                            else
-                                gemBonus[statCode] = bonusValue
+        end
+    end
+
+    for i = 1, numLines do
+        local leftLine = _G["TFScanTooltipTextLeft" .. i]
+        local lineText = leftLine and leftLine:GetText()
+
+        if lineText and lineText ~= "" then
+            local r, g, b = 1, 1, 1
+            if leftLine.GetTextColor then
+                r, g, b = leftLine:GetTextColor()
+            end
+
+            -- A. Socket Bonus Processing
+            if string.find(lineText, socketBonusString) then
+                local isActive = (r < 0.1) -- Green text indicates active socket bonus
+                local bonusText = string.gsub(lineText, "^" .. socketBonusString .. "$", "%1")
+                if isActive then
+                    ParseStatLine(bonusText, gemBonus)
+                elseif #emptySocketColors > 0 then
+                    for _, sTable in pairs(TopFit.statList) do
+                        for _, statCode in pairs(sTable) do
+                            if _G[statCode] and string.find(bonusText, _G[statCode]) then
+                                local pat1 = "%+?(%d+)%s*" .. _G[statCode]
+                                local pat2 = _G[statCode] .. "%s*%+?(%d+)"
+                                local val = tonumber(string.match(bonusText, pat1) or string.match(bonusText, pat2)) or 0
+                                if val > 0 then
+                                    socketBonusInfo = { stat = statCode, value = val }
+                                end
                             end
                         end
                     end
                 end
-            elseif socketBonus and #emptySocketColors > 0 then
-                -- bonus exists but isn't active yet (sockets not all filled/matched) -- record its
-                -- stat/value so GetPotentialGemScore can credit it IF the empty sockets end up
-                -- filled with matching gems
-                for _, sTable in pairs(TopFit.statList) do
-                    for _, statCode in pairs(sTable) do
-                        if (string.find(socketBonus, _G[statCode])) then
-                            local rawValue = string.gsub(socketBonus, _G[statCode], "")
-                            local bonusValue = tonumber(rawValue) or 0
-                            socketBonusInfo = { stat = statCode, value = bonusValue }
+
+            -- B. Empty Socket Processing
+            else
+                local isEmptySocket = false
+                for color, pattern in pairs(socketColorPatterns) do
+                    if pattern and lineText == pattern then
+                        table.insert(emptySocketColors, color)
+                        isEmptySocket = true
+                        break
+                    end
+                end
+
+                if not isEmptySocket then
+                    -- C. Enchantments (Green text, excluding Equip/Use/Set)
+                    if r < 0.1 and g > 0.9 and b < 0.1 then
+                        if not string.find(lineText, "Equip:") and not string.find(lineText, "Use:") and not string.find(lineText, "Set:") then
+                            ParseStatLine(lineText, enchantBonus)
+                        end
+
+                    -- D. Socketed Gem Lines (Starts with '+' or contains 'All Stats')
+                    else
+                        local isMetadata = string.find(lineText, "Armor") or string.find(lineText, "Durability") or
+                                           string.find(lineText, "Requires") or string.find(lineText, "Classes:") or
+                                           string.find(lineText, "Soulbound") or string.find(lineText, "Binds") or
+                                           string.find(lineText, "Equip:") or string.find(lineText, "Use:") or
+                                           string.find(lineText, "Set:") or string.find(lineText, "Item Level") or
+                                           string.find(lineText, "Tier") or string.find(lineText, "Slot") or
+                                           string.find(lineText, "Head") or string.find(lineText, "Shoulder") or
+                                           string.find(lineText, "Chest") or string.find(lineText, "Waist") or
+                                           string.find(lineText, "Legs") or string.find(lineText, "Feet") or
+                                           string.find(lineText, "Wrist") or string.find(lineText, "Hands") or
+                                           string.find(lineText, "Finger") or string.find(lineText, "Trinket") or
+                                           string.find(lineText, "Back") or string.find(lineText, "Main Hand") or
+                                           string.find(lineText, "Off Hand") or string.find(lineText, "One%-Hand") or
+                                           string.find(lineText, "Two%-Hand") or string.find(lineText, "Ranged") or
+                                           string.find(lineText, "Relic") or string.find(lineText, "Mail") or
+                                           string.find(lineText, "Leather") or string.find(lineText, "Plate") or
+                                           string.find(lineText, "Cloth") or string.find(lineText, "Damage") or
+                                           string.find(lineText, "Speed") or string.find(lineText, "dps")
+
+                        if not isMetadata and (string.find(lineText, "^%+%d+") or string.find(lineText, "%+%d+%s+[Aa]ll%s+[Ss]tats")) then
+                            ParseStatLine(lineText, gemBonus)
+                            table.insert(filledSocketColors, "PRISMATIC")
                         end
                     end
                 end
             end
-            
-            TopFit.scanTooltip:Hide()
         end
-        
-        -- only attempt bonus-aware valuation when every socket is empty (see comment above) --
-        -- otherwise still record the empty socket colors for independent best-gem valuation, but
-        -- drop the bonus info since we can't confirm the filled sockets don't already break it
-        if #filledSocketColors > 0 then
-            socketBonusInfo = nil
-        end
-        
-        -- enchantment
-        local enchantBonus = {}
-        if enchantID > 0 then
-            for _, slotID in pairs(TopFit.slots) do
-                if (TopFit.enchantIDs[slotID] and TopFit.enchantIDs[slotID][enchantID]) then
-                    enchantBonus = TopFit.enchantIDs[slotID][enchantID]
-                end
-            end
-        end
-        
-        -- scan for setname
-        TopFit.scanTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
-        TopFit.scanTooltip:SetHyperlink(itemLink)
-        local numLines = TopFit.scanTooltip:NumLines()
-        local setName = nil
-        for i = 1, numLines do
-            local leftLine = getglobal("TFScanTooltip".."TextLeft"..i)
-            local leftLineText = leftLine:GetText()
-            
-            if string.find(leftLineText, "(.*)%s%([0-9]+/[0-9+]%)") then
-                setName = select(3, string.find(leftLineText, "(.*)%s%([0-9]+/[0-9+]%)"))
-                break
-            end
-        end
-        
-        -- add set name
-        if setName then
-            itemBonus["SET: "..setName] = 1
-        end
-        
-        -- dirty little mana regen fix!
-        --TODO: better synonim handling
-        itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = ((itemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] or 0) + (itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] or 0))
-        itemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
-        if (itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0) then itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
-        
-        gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = ((gemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] or 0) + (gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] or 0))
-        gemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
-        if (gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0) then gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
-        
-        enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = ((gemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] or 0) + (gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] or 0))
-        enchantBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
-        if (enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0) then enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
-        
-        -- calculate total values
-        local totalBonus = {}
-        for _, bonusTable in pairs({itemBonus, gemBonus, enchantBonus}) do
-            for stat, value in pairs(bonusTable) do
-                totalBonus[stat] = (totalBonus[stat] or 0) + value
-            end
-        end
-
-        -- Use:/Equip: proc effects. Only folded into totalBonus when a real cooldown is known
-        -- (click-to-use trinkets, or the rare Equip proc that states an internal cooldown) --
-        -- see procparser.lua's header comment for why chance-based procs with no stated
-        -- cooldown are deliberately left out of scoring rather than guessed at.
-        -- Guarded with TopFit.ParseItemProc (not a direct call) so that if procparser.lua
-        -- failed to load or isn't present, item caching still works -- an optional module
-        -- being missing should never break core inventory scanning.
-        local procInfo = TopFit.ParseItemProc and TopFit:ParseItemProc(itemLink)
-        local hasUnscoredProc = false
-        if procInfo then
-            local effectiveValue = TopFit.GetProcEffectiveValue and TopFit:GetProcEffectiveValue(procInfo)
-            if effectiveValue then
-                totalBonus[procInfo.statKey] = (totalBonus[procInfo.statKey] or 0) + effectiveValue
-            else
-                hasUnscoredProc = true
-            end
-        end
-        
-        local result = {
-            ["itemLink"] = itemLink,
-            ["itemID"] = itemID,
-            ["itemQuality"] = itemQuality,
-            ["itemMinLevel"] = itemMinLevel,
-            ["itemEquipLoc"] = itemEquipLoc,
-            ["itemSubType"] = itemSubType,
-            ["itemBonus"] = itemBonus,
-            ["gems"] = gems,
-            ["enchantBonus"] = enchantBonus,
-            ["gemBonus"] = gemBonus,
-            ["emptySocketColors"] = emptySocketColors,
-            ["socketBonusInfo"] = socketBonusInfo,
-            ["equipLocationsByType"] = TopFit:GetEquipLocationsByInvType(itemEquipLoc),
-            ["totalBonus"] = totalBonus,
-            ["procInfo"] = procInfo,
-            ["hasUnscoredProc"] = hasUnscoredProc,
-        }
-        
-        return result
-    else
-        return nil
     end
+    TopFit.scanTooltip:Hide()
+
+    if #filledSocketColors > 0 then
+        socketBonusInfo = nil
+    end
+
+    -- 4. Set Name Scanning
+    TopFit.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    TopFit.scanTooltip:SetHyperlink(itemLink)
+    local setName = nil
+    for i = 1, TopFit.scanTooltip:NumLines() do
+        local leftLine = _G["TFScanTooltipTextLeft" .. i]
+        local leftLineText = leftLine and leftLine:GetText()
+        if leftLineText and string.find(leftLineText, "(.*)%s%([0-9]+/[0-9+]%)") then
+            setName = select(3, string.find(leftLineText, "(.*)%s%([0-9]+/[0-9+]%)"))
+            break
+        end
+    end
+    TopFit.scanTooltip:Hide()
+
+    if setName then
+        itemBonus["SET: " .. setName] = 1
+    end
+
+    -- 5. Mana Regen Consolidation
+    itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = ((itemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] or 0) + (itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] or 0))
+    itemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
+    if itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0 then itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
+
+    gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = ((gemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] or 0) + (gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] or 0))
+    gemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
+    if gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0 then gemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
+
+    enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = ((enchantBonus["ITEM_MOD_POWER_REGEN0_SHORT"] or 0) + (enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] or 0))
+    enchantBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
+    if enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0 then enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
+
+    -- 6. Total Bonus Aggregation
+    local totalBonus = {}
+    for _, bonusTable in pairs({ itemBonus, gemBonus, enchantBonus }) do
+        for stat, value in pairs(bonusTable) do
+            totalBonus[stat] = (totalBonus[stat] or 0) + value
+        end
+    end
+
+    local procInfo = TopFit.ParseItemProc and TopFit:ParseItemProc(itemLink)
+    local hasUnscoredProc = false
+    if procInfo then
+        local effectiveValue = TopFit.GetProcEffectiveValue and TopFit:GetProcEffectiveValue(procInfo)
+        if effectiveValue then
+            totalBonus[procInfo.statKey] = (totalBonus[procInfo.statKey] or 0) + effectiveValue
+        else
+            hasUnscoredProc = true
+        end
+    end
+
+    local result = {
+        ["itemLink"] = itemLink,
+        ["itemID"] = itemID,
+        ["itemQuality"] = itemQuality,
+        ["itemMinLevel"] = itemMinLevel,
+        ["itemEquipLoc"] = itemEquipLoc,
+        ["itemSubType"] = itemSubType,
+        ["itemBonus"] = itemBonus,
+        ["gems"] = gems,
+        ["enchantBonus"] = enchantBonus,
+        ["gemBonus"] = gemBonus,
+        ["emptySocketColors"] = emptySocketColors,
+        ["socketBonusInfo"] = socketBonusInfo,
+        ["equipLocationsByType"] = TopFit:GetEquipLocationsByInvType(itemEquipLoc),
+        ["totalBonus"] = totalBonus,
+        ["procInfo"] = procInfo,
+        ["hasUnscoredProc"] = hasUnscoredProc,
+    }
+
+    TopFit.db.global.itemCache[cacheKey] = result
+
+    return result
 end
 
 -- calculate an item's score relative to a given set
