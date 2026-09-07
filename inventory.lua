@@ -91,7 +91,7 @@ function TopFit:GetItemInfoTable(item)
     itemID = tonumber(itemID)
     enchantID = tonumber(enchantID)
 
-    -- 2. Base Item Stats
+    -- 2. Base Item Stats (from API)
     local itemBonus = GetItemStats(itemLink) or {}
 
     if TopFit.GetSimcWeaponType and TopFit:GetSimcWeaponType(itemLink) then
@@ -101,42 +101,12 @@ function TopFit:GetItemInfoTable(item)
         end
     end
 
-    local gems = {}
-    for i = 1, 4 do
-        local gemName, gemLink = GetItemGem(item, i)
-        if gemName or gemLink then
-            gems[i] = gemLink or gemName
-        end
-    end
-
-    -- 3. Unified Main Item Tooltip Scanning
-    local gemBonus = {}
-    local enchantBonus = {}
-    local emptySocketColors = {}
-    local socketBonusInfo = nil
-    local filledSocketColors = {}
-
-    TopFit.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
-    TopFit.scanTooltip:SetHyperlink(itemLink)
-    local numLines = TopFit.scanTooltip:NumLines()
-
-    local socketBonusString = _G["ITEM_SOCKET_BONUS"] or "Socket Bonus: %s"
-    socketBonusString = string.gsub(socketBonusString, "%%s", "(.*)")
-
-    local socketColorPatterns = {
-        RED = _G["EMPTY_SOCKET_RED"],
-        YELLOW = _G["EMPTY_SOCKET_YELLOW"],
-        BLUE = _G["EMPTY_SOCKET_BLUE"],
-        META = _G["EMPTY_SOCKET_META"],
-        PRISMATIC = _G["EMPTY_SOCKET_PRISMATIC"],
-    }
-
-    -- Helper to parse stat lines into target tables
+    -- Helper to parse stat lines safely
     local function ParseStatLine(lineText, targetTable)
-        -- Strip parenthesized values e.g. "(+1.30%, +1.00% Spell)"
-        local cleanLine = string.gsub(lineText, "%(.-%)", "")
+        if not lineText or lineText == "" then return end
+        local cleanLine = string.gsub(lineText, "%(.-%)", "") -- Strip parenthesized rating calculations
 
-        -- Handle "+X All Stats" (e.g., Enchanted / Nightmare Tear, Prismatic Sphere)
+        -- Handle "+X All Stats" (Enchanted / Nightmare Tear, Prismatic Sphere)
         local allStatsVal = string.match(cleanLine, "%+?(%d+)%s+[Aa]ll%s+[Ss]tats")
         if allStatsVal then
             local val = tonumber(allStatsVal) or 0
@@ -171,6 +141,65 @@ function TopFit:GetItemInfoTable(item)
         end
     end
 
+    -- 3. SCAN SOCKETED GEMS IN ISOLATION (Only inspects the gem's own tooltip link)
+    local gemBonus = {}
+    local gems = {}
+    local filledSocketColors = {}
+
+    for i = 1, 4 do
+        local gemName, gemLink = GetItemGem(item, i)
+        if gemLink or gemName then
+            local activeGemLink = gemLink or gemName
+            gems[i] = activeGemLink
+
+            TopFit.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+            TopFit.scanTooltip:SetHyperlink(activeGemLink)
+
+            local gemColor = nil
+            for lineIdx = 1, TopFit.scanTooltip:NumLines() do
+                local leftLine = _G["TFScanTooltipTextLeft" .. lineIdx]
+                local lineText = leftLine and leftLine:GetText()
+                if lineText and lineText ~= "" then
+                    -- Parse stats directly off the gem's isolated tooltip ONLY
+                    ParseStatLine(lineText, gemBonus)
+
+                    -- Detect gem socket color
+                    if string.find(lineText, "Red") or string.find(lineText, "Rubidium") then
+                        gemColor = "RED"
+                    elseif string.find(lineText, "Yellow") or string.find(lineText, "Amber") then
+                        gemColor = "YELLOW"
+                    elseif string.find(lineText, "Blue") or string.find(lineText, "Sapphire") then
+                        gemColor = "BLUE"
+                    elseif string.find(lineText, "Meta") then
+                        gemColor = "META"
+                    end
+                end
+            end
+            TopFit.scanTooltip:Hide()
+            filledSocketColors[i] = gemColor or "PRISMATIC"
+        end
+    end
+
+    -- 4. SCAN MAIN ITEM TOOLTIP (Only for Active Socket Bonus, Empty Sockets & Enchants)
+    local enchantBonus = {}
+    local emptySocketColors = {}
+    local socketBonusInfo = nil
+
+    TopFit.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    TopFit.scanTooltip:SetHyperlink(itemLink)
+    local numLines = TopFit.scanTooltip:NumLines()
+
+    local socketBonusString = _G["ITEM_SOCKET_BONUS"] or "Socket Bonus: %s"
+    socketBonusString = string.gsub(socketBonusString, "%%s", "(.*)")
+
+    local socketColorPatterns = {
+        RED = _G["EMPTY_SOCKET_RED"],
+        YELLOW = _G["EMPTY_SOCKET_YELLOW"],
+        BLUE = _G["EMPTY_SOCKET_BLUE"],
+        META = _G["EMPTY_SOCKET_META"],
+        PRISMATIC = _G["EMPTY_SOCKET_PRISMATIC"],
+    }
+
     for i = 1, numLines do
         local leftLine = _G["TFScanTooltipTextLeft" .. i]
         local lineText = leftLine and leftLine:GetText()
@@ -181,9 +210,9 @@ function TopFit:GetItemInfoTable(item)
                 r, g, b = leftLine:GetTextColor()
             end
 
-            -- A. Socket Bonus Processing
+            -- A. Active Socket Bonus
             if string.find(lineText, socketBonusString) then
-                local isActive = (r < 0.1) -- Green text indicates active socket bonus
+                local isActive = (r < 0.1) -- Green text indicates active bonus
                 local bonusText = string.gsub(lineText, "^" .. socketBonusString .. "$", "%1")
                 if isActive then
                     ParseStatLine(bonusText, gemBonus)
@@ -202,49 +231,19 @@ function TopFit:GetItemInfoTable(item)
                     end
                 end
 
-            -- B. Empty Socket Processing
+            -- B. Empty Sockets
             else
-                local isEmptySocket = false
                 for color, pattern in pairs(socketColorPatterns) do
                     if pattern and lineText == pattern then
                         table.insert(emptySocketColors, color)
-                        isEmptySocket = true
                         break
                     end
                 end
 
-                if not isEmptySocket then
-                    -- C. Enchantments (Green text, excluding Equip/Use/Set)
-                    if r < 0.1 and g > 0.9 and b < 0.1 then
-                        if not string.find(lineText, "Equip:") and not string.find(lineText, "Use:") and not string.find(lineText, "Set:") then
-                            ParseStatLine(lineText, enchantBonus)
-                        end
-
-                    -- D. Socketed Gem Lines (Starts with '+' or contains 'All Stats')
-                    else
-                        local isMetadata = string.find(lineText, "Armor") or string.find(lineText, "Durability") or
-                                           string.find(lineText, "Requires") or string.find(lineText, "Classes:") or
-                                           string.find(lineText, "Soulbound") or string.find(lineText, "Binds") or
-                                           string.find(lineText, "Equip:") or string.find(lineText, "Use:") or
-                                           string.find(lineText, "Set:") or string.find(lineText, "Item Level") or
-                                           string.find(lineText, "Tier") or string.find(lineText, "Slot") or
-                                           string.find(lineText, "Head") or string.find(lineText, "Shoulder") or
-                                           string.find(lineText, "Chest") or string.find(lineText, "Waist") or
-                                           string.find(lineText, "Legs") or string.find(lineText, "Feet") or
-                                           string.find(lineText, "Wrist") or string.find(lineText, "Hands") or
-                                           string.find(lineText, "Finger") or string.find(lineText, "Trinket") or
-                                           string.find(lineText, "Back") or string.find(lineText, "Main Hand") or
-                                           string.find(lineText, "Off Hand") or string.find(lineText, "One%-Hand") or
-                                           string.find(lineText, "Two%-Hand") or string.find(lineText, "Ranged") or
-                                           string.find(lineText, "Relic") or string.find(lineText, "Mail") or
-                                           string.find(lineText, "Leather") or string.find(lineText, "Plate") or
-                                           string.find(lineText, "Cloth") or string.find(lineText, "Damage") or
-                                           string.find(lineText, "Speed") or string.find(lineText, "dps")
-
-                        if not isMetadata and (string.find(lineText, "^%+%d+") or string.find(lineText, "%+%d+%s+[Aa]ll%s+[Ss]tats")) then
-                            ParseStatLine(lineText, gemBonus)
-                            table.insert(filledSocketColors, "PRISMATIC")
-                        end
+                -- C. Active Enchants (Green text, excluding Equip, Use, Set, and Socket Bonus)
+                if r < 0.1 and g > 0.9 and b < 0.1 then
+                    if not string.find(lineText, "Equip:") and not string.find(lineText, "Use:") and not string.find(lineText, "Set:") and not string.find(lineText, "Socket Bonus") then
+                        ParseStatLine(lineText, enchantBonus)
                     end
                 end
             end
@@ -256,7 +255,7 @@ function TopFit:GetItemInfoTable(item)
         socketBonusInfo = nil
     end
 
-    -- 4. Set Name Scanning
+    -- 5. Set Name Scanning
     TopFit.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
     TopFit.scanTooltip:SetHyperlink(itemLink)
     local setName = nil
@@ -274,7 +273,7 @@ function TopFit:GetItemInfoTable(item)
         itemBonus["SET: " .. setName] = 1
     end
 
-    -- 5. Mana Regen Consolidation
+    -- 6. Mana Regen Consolidation
     itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = ((itemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] or 0) + (itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] or 0))
     itemBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
     if itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0 then itemBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
@@ -287,7 +286,7 @@ function TopFit:GetItemInfoTable(item)
     enchantBonus["ITEM_MOD_POWER_REGEN0_SHORT"] = nil
     if enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] == 0 then enchantBonus["ITEM_MOD_MANA_REGENERATION_SHORT"] = nil end
 
-    -- 6. Total Bonus Aggregation
+    -- 7. Total Bonus Aggregation
     local totalBonus = {}
     for _, bonusTable in pairs({ itemBonus, gemBonus, enchantBonus }) do
         for stat, value in pairs(bonusTable) do
@@ -329,7 +328,6 @@ function TopFit:GetItemInfoTable(item)
 
     return result
 end
-
 -- calculate an item's score relative to a given set
 function TopFit:CalculateItemScore(itemLink)
     local itemTable = TopFit:GetCachedItem(itemLink)
