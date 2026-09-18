@@ -1,4 +1,6 @@
 TopFit = {}
+TopFit.Debug = function() end
+
 tinsert = table.insert
 tremove = table.remove
 
