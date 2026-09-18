@@ -46,6 +46,9 @@ jobs:
           find . -type f -name '*.lua' -not -path './Libs/*' -print0 |
             xargs -0 -r -n1 luac5.1 -p
 
+      - name: Run unit tests
+        run: lua5.1 tests/test_calculation.lua
+
       - name: Check changed Lua
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
