@@ -11,6 +11,6 @@
 TopFit.gemIDs = {}
 TopFit.talentRatingBonuses = {}
 
-function TopFit:GetPresets()
+function TopFit.GetPresets()
     return {}
 end
