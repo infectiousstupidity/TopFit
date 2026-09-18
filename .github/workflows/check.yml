@@ -1,0 +1,79 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  check:
+    name: Lua 5.1 quality gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Lua 5.1 and Luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1 liblua5.1-0-dev luarocks
+          sudo luarocks --lua-version=5.1 install luacheck 1.2.0-1
+
+      - name: Install StyLua
+        env:
+          STYLUA_VERSION: "2.5.2"
+        run: |
+          curl -fsSL "https://github.com/JohnnyMorganz/StyLua/releases/download/v${STYLUA_VERSION}/stylua-linux-x86_64.zip" -o /tmp/stylua.zip
+          unzip -q /tmp/stylua.zip -d /tmp/stylua
+          sudo install -m 0755 /tmp/stylua/stylua /usr/local/bin/stylua
+          stylua --version
+
+      - name: Check Lua 5.1 syntax
+        run: |
+          find . -type f -name '*.lua' -not -path './Libs/*' -print0 |
+            xargs -0 -r -n1 luac5.1 -p
+
+      - name: Check changed Lua
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -z "${BASE_SHA}" || "${BASE_SHA}" =~ ^0+$ ]]; then
+            echo "No comparison base available; skipping changed-file lint and formatting checks."
+            exit 0
+          fi
+
+          git diff --name-only --diff-filter=ACMR "${BASE_SHA}" "${GITHUB_SHA}" -- '*.lua' |
+            grep -v '^Libs/' > /tmp/changed-lua.txt || true
+
+          if [[ ! -s /tmp/changed-lua.txt ]]; then
+            echo "No first-party Lua files changed."
+            exit 0
+          fi
+
+          mapfile -t lua_files < /tmp/changed-lua.txt
+          printf 'Checking %s\n' "${lua_files[@]}"
+          stylua --check "${lua_files[@]}"
+          luacheck "${lua_files[@]}"
+
+      - name: Check whitespace
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -z "${BASE_SHA}" || "${BASE_SHA}" =~ ^0+$ ]]; then
+            git diff --check
+          else
+            git diff --check "${BASE_SHA}" "${GITHUB_SHA}"
+          fi

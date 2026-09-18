@@ -1,1 +1,11 @@
 .vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+dist/
+release/
+*.zip
+
+*.luacheckcache
