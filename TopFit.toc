@@ -26,4 +26,3 @@ simc_export.lua
 
 plugins\stats.lua
 plugins\virtual_items.lua
-
