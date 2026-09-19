@@ -65,10 +65,7 @@ function tests.metaActivationUsesWholeLoadoutColors()
         TopFit:IsMetaConditionSatisfied(chaotic, TopFit:CountGemColors({ blue, purple })),
         "two blue contributions"
     )
-    assertFalse(
-        TopFit:IsMetaConditionSatisfied(chaotic, TopFit:CountGemColors({ blue })),
-        "one blue contribution"
-    )
+    assertFalse(TopFit:IsMetaConditionSatisfied(chaotic, TopFit:CountGemColors({ blue })), "one blue contribution")
 end
 
 function tests.currentPhaseExcludesTocEpicGems()
@@ -103,8 +100,7 @@ function tests.loadoutValidationEnforcesMetaAndUniqueRules()
     local valid, reason = TopFit:ValidateGemLoadout({ "META", "BLUE", "RED" }, { chaotic, blue, purple }, context)
     assertTrue(valid, reason)
 
-    valid, reason =
-        TopFit:ValidateGemLoadout({ "META", "RED", "RED" }, { chaotic, gem(39996), gem(39996) }, context)
+    valid, reason = TopFit:ValidateGemLoadout({ "META", "RED", "RED" }, { chaotic, gem(39996), gem(39996) }, context)
     assertFalse(valid, "chaotic should be inactive")
     assertEqual(reason, "meta-inactive", "inactive meta reason")
 end
@@ -146,12 +142,7 @@ function tests.itemTypeRestrictsEnchantCandidates()
         "Massacre fits two-hand weapon"
     )
     assertFalse(
-        TopFit:IsEnchantCandidateAvailable(
-            massacre,
-            context,
-            16,
-            { itemLevel = 200, itemEquipLoc = "INVTYPE_WEAPON" }
-        ),
+        TopFit:IsEnchantCandidateAvailable(massacre, context, 16, { itemLevel = 200, itemEquipLoc = "INVTYPE_WEAPON" }),
         "Massacre must not fit one-hand weapon"
     )
 end
