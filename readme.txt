@@ -86,6 +86,21 @@ percentage of the best score. "Use" makes the displayed configuration the active
 preserving all existing safety rules for banked gear, BoEs, virtual items, and hypothetical
 gem/enchant changes.
 
+Source-aware upgrade paths
+--------------------------
+
+The Upgrades plugin can scan currently available Phase 3 raid drops and measure their real whole-set
+gain. It first recalculates an owned-only baseline, then injects one prospective item at a time and
+reruns the complete gear/gem/enchant optimizer.
+
+Current generated sources cover Ulduar plus Archavon and Emalon in Vault of Archavon. Results show
+the item, whole-set score gain/percentage, and raid/encounter/difficulty. Clicking a result previews
+the complete configuration that makes use of that item.
+
+Candidate discovery is bounded before the expensive reruns: TopFit keeps the strongest weighted
+choices per slot plus active-cap specialists, then fully re-optimizes each survivor. Configured
+legacy virtual items are suppressed during the scan so they cannot contaminate the owned baseline.
+
 Owned inventory
 ---------------
 
@@ -99,7 +114,7 @@ remain recommendations only until they are withdrawn.
 
 Not implemented yet
 -------------------
-- source-aware upgrade paths;
+- broader upgrade-source generation for emblem vendors, crafted/reputation/quest/PvP gear;
 - spec-specific simulation models for currently unscored proc/meta effects;
 - an exhaustive optimizer mode if profiling shows it can be made safe on the 3.3.5 client.
 
@@ -118,6 +133,7 @@ See docs/candidate-model.md for gem/enchant model rules and data provenance.
 See docs/item-socket-data.md for generated socket metadata and regeneration instructions.
 See docs/variant-optimizer.md for the bounded gem/enchant search and its correctness boundary.
 See docs/alternatives.md for Top-N result retention and browsing.
+See docs/upgrade-planner.md for source-aware full-set upgrade evaluation.
 
 Credits
 -------
