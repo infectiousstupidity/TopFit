@@ -73,6 +73,19 @@ This is intentionally a bounded frontier, not an exhaustive proof over every pos
 permutation. That keeps the 3.3.5 client responsive while preserving the dimensions that can change
 the optimum under the current stat-weight/cap model.
 
+Alternative complete configurations
+-----------------------------------
+
+TopFit now retains up to five complete cap-valid results instead of discarding everything except the
+single best set. Exact duplicates and ring/trinket slot swaps are collapsed, and at most two
+gem/enchant variants of the same physical gear set are retained so tiny modification differences do
+not crowd out genuinely different gear choices.
+
+After a calculation, compact < / > controls let you browse alternatives and see each result as a
+percentage of the best score. "Use" makes the displayed configuration the active recommendation while
+preserving all existing safety rules for banked gear, BoEs, virtual items, and hypothetical
+gem/enchant changes.
+
 Owned inventory
 ---------------
 
@@ -86,7 +99,6 @@ remain recommendations only until they are withdrawn.
 
 Not implemented yet
 -------------------
-- Top-N alternative gear sets;
 - source-aware upgrade paths;
 - spec-specific simulation models for currently unscored proc/meta effects;
 - an exhaustive optimizer mode if profiling shows it can be made safe on the 3.3.5 client.
@@ -105,6 +117,7 @@ See docs/chromiecraft-baseline.md for the baseline code review and keep/remove d
 See docs/candidate-model.md for gem/enchant model rules and data provenance.
 See docs/item-socket-data.md for generated socket metadata and regeneration instructions.
 See docs/variant-optimizer.md for the bounded gem/enchant search and its correctness boundary.
+See docs/alternatives.md for Top-N result retention and browsing.
 
 Credits
 -------
