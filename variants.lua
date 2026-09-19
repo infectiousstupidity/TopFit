@@ -183,7 +183,7 @@ function TopFit:EnsureCandidateIndexes()
     end
 end
 
-function TopFit:GetBaseVariantStats(itemTable)
+function TopFit.GetBaseVariantStats(itemTable)
     local stats = CopyTable(itemTable.totalBonus)
     SubtractStats(stats, itemTable.gemBonus)
     SubtractStats(stats, itemTable.enchantBonus)
@@ -427,7 +427,7 @@ local function VariantSignature(variant, caps)
     return table.concat(parts, ":")
 end
 
-function TopFit:PruneItemVariants(variants, weights, caps)
+function TopFit.PruneItemVariants(variants, weights, caps)
     table.sort(variants, function(left, right)
         local leftScore = WeightedScore(left.itemTable.totalBonus, weights)
         local rightScore = WeightedScore(right.itemTable.totalBonus, weights)
@@ -502,7 +502,7 @@ function TopFit:BuildItemVariants(baseItemLink, slotID, setCode)
     local caps = setTable.caps or {}
     local context = self:BuildCandidateContext()
     local currentEnchantID, currentGemIDs = self.GetItemModificationIDs(baseItemLink)
-    local baseStats = self:GetBaseVariantStats(itemTable)
+    local baseStats = self.GetBaseVariantStats(itemTable)
     local variants = {}
 
     local currentMetadata = CurrentVariantMetadata(self, baseItemLink)
@@ -613,5 +613,5 @@ function TopFit:BuildItemVariants(baseItemLink, slotID, setCode)
         end
     end
 
-    return self:PruneItemVariants(variants, weights, caps)
+    return self.PruneItemVariants(variants, weights, caps)
 end
