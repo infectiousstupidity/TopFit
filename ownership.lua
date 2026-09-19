@@ -221,7 +221,9 @@ function TopFit:WarnIfBankSnapshotMissing()
     end
 
     TopFit.warnedAboutMissingBankSnapshot = true
-    TopFit:Print(\n        "Bank items are not included yet. Open your bank once and TopFit will remember its equippable contents."\n    )
+    TopFit:Print(
+        "Bank items are not included yet. Open your bank once and TopFit will remember its equippable contents."
+    )
 end
 
 function TopFit:GetRecommendationEquipBlockers(recommendations)
