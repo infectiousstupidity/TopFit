@@ -130,13 +130,7 @@ end
 
 function tests.hybridColorClassSurvivesFrontier()
     local context = TopFit:BuildCandidateContext({ phase = 3, professionSkills = {} })
-    local selected = TopFit:SelectGemCandidatesForVariant(
-        "RED",
-        context,
-        { ITEM_MOD_STRENGTH_SHORT = 1 },
-        {},
-        nil
-    )
+    local selected = TopFit:SelectGemCandidatesForVariant("RED", context, { ITEM_MOD_STRENGTH_SHORT = 1 }, {}, nil)
 
     local foundPurple = false
     for _, candidate in ipairs(selected) do
