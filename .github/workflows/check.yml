@@ -47,7 +47,11 @@ jobs:
             xargs -0 -r -n1 luac5.1 -p
 
       - name: Run unit tests
-        run: lua5.1 tests/test_calculation.lua
+        run: |
+          for test_file in tests/test_*.lua; do
+            echo "Running ${test_file}"
+            lua5.1 "${test_file}"
+          done
 
       - name: Check changed Lua
         env:

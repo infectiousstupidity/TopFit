@@ -26,10 +26,19 @@ until they are rebuilt from verified WotLK 3.3.5a / ChromieCraft data.
 
 Actual gems and enchants already present on items are still read from live item tooltips.
 
+Owned inventory
+---------------
+
+TopFit now optimizes across equipped gear, bags, and a persistent snapshot of the character bank.
+Open the bank once after installing or updating the addon so TopFit can record its equippable
+contents. The snapshot is refreshed while the bank is open and remains available after it is closed.
+
+Unbound Bind-on-Equip items are valid owned candidates, but TopFit will never auto-equip a
+recommended set containing one because doing so may bind a valuable item. Banked items likewise
+remain recommendations only until they are withdrawn.
+
 Not implemented yet
 -------------------
-
-- bank inventory snapshots;
 - automatic gem/enchant combination optimization;
 - meta-gem and profession restriction solving;
 - Top-N alternative gear sets;
@@ -42,9 +51,9 @@ Development
 The addon targets Lua 5.1. GitHub Actions checks Lua syntax, formatting, Luacheck, unit tests,
 whitespace, secret scanning, and Semgrep.
 
-Run the pure calculation tests from the repository root with:
+Run the pure Lua tests from the repository root with:
 
-    lua5.1 tests/test_calculation.lua
+    for test_file in tests/test_*.lua; do lua5.1 "$test_file"; done
 
 See docs/chromiecraft-baseline.md for the baseline code review and keep/remove decisions.
 

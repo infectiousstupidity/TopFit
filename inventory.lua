@@ -70,7 +70,11 @@ end
 -- find out all we need to know about an item. and maybe even more
 -- this does not return information which might change, only things you can get from the item link
 function TopFit:GetItemInfoTable(item)
-    local itemName, itemLink, itemQuality, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture = GetItemInfo(item)
+    local _, resolvedItemLink, itemQuality, _, itemMinLevel, _, itemSubType, _, itemEquipLoc = GetItemInfo(item)
+    local itemLink = resolvedItemLink
+    if not itemLink and type(item) == "string" and string.find(item, "|Hitem:", 1, true) then
+        itemLink = item
+    end
     if not itemLink then return nil end
 
     -- Extract IDs for unique cache key
@@ -88,8 +92,11 @@ function TopFit:GetItemInfoTable(item)
         return TopFit.db.global.itemCache[cacheKey]
     end
 
+    -- A persisted bank snapshot can outlive the client's in-memory item cache. If GetItemInfo()
+    -- cannot resolve the link yet, only previously cached deterministic item data is safe to use.
+    if not resolvedItemLink then return nil end
+
     itemID = tonumber(itemID)
-    enchantID = tonumber(enchantID)
 
     -- 2. Base Item Stats (from API)
     local itemBonus = GetItemStats(itemLink) or {}
@@ -453,11 +460,12 @@ function TopFit:GetEquippableItems(requestedSlotID)
     local availableSlots = {}
 
     -- find available item ids for each slot
-    for slotName, slotID in pairs(TopFit.slots) do
+    for _, slotID in pairs(TopFit.slots) do
         itemListBySlot[slotID] = {}
-        slotAvailableItems = GetInventoryItemsForSlot(slotID)
-        if (slotAvailableItems) then
-            for availableLocation, availableItemID in pairs(slotAvailableItems) do
+        local slotAvailableItems = {}
+        GetInventoryItemsForSlot(slotID, slotAvailableItems)
+        if slotAvailableItems then
+            for _, availableItemID in pairs(slotAvailableItems) do
                 if (not availableSlots[availableItemID]) then
                     availableSlots[availableItemID] = { slotID }
                 else
@@ -498,27 +506,15 @@ function TopFit:GetEquippableItems(requestedSlotID)
                 itemID = tonumber(itemID)
                 
                 if (availableSlots[itemID]) then
-                    -- check if item is BoE
-                    local isBoE = false
-                    TopFit.scanTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
-                    TopFit.scanTooltip:SetBagItem(bag, slot)
-                    local numLines = TopFit.scanTooltip:NumLines()
-                    for i = 1, numLines do
-                        local leftLine = getglobal("TFScanTooltip".."TextLeft"..i)
-                        local leftLineText = leftLine:GetText()
-                        
-                        if string.find(leftLineText, _G["ITEM_BIND_ON_EQUIP"]) then
-                            isBoE = true
-                            break
-                        end
-                    end
-                    
+                    local isBoE = TopFit:IsUnboundBoEInContainer(bag, slot)
+
                     for _, slotID in pairs(availableSlots[itemID]) do
                         tinsert(itemListBySlot[slotID], {
                             itemLink = itemLink,
                             isBoE = isBoE,
+                            source = "bags",
                             bag = bag,
-                            slot = slot
+                            slot = slot,
                         })
                     end
                 end
@@ -538,13 +534,20 @@ function TopFit:GetEquippableItems(requestedSlotID)
                     tinsert(itemListBySlot[slotID], {
                         itemLink = itemLink,
                         isBoE = false, -- it is already equipped
-                        slot = invSlot
+                        source = "equipped",
+                        slot = invSlot,
                     })
                 end
             end
         end
     end
     
+    -- add the last known bank contents. Bank data is refreshed whenever the bank is open.
+    TopFit:AddBankSnapshotItems(itemListBySlot)
+    if not TopFit.silentCalculation then
+        TopFit:WarnIfBankSnapshotMissing()
+    end
+
     -- add virtual items
     if (TopFit.setCode and TopFit.db.profile.sets[TopFit.setCode].virtualItems and not TopFit.db.profile.sets[TopFit.setCode].skipVirtualItems) then
         for _, itemLink in pairs(TopFit.db.profile.sets[TopFit.setCode].virtualItems) do
@@ -554,7 +557,8 @@ function TopFit:GetEquippableItems(requestedSlotID)
                 tinsert(itemListBySlot[slotID], {
                     itemLink = itemLink,
                     isBoE = false, -- if it's in virtual items, we want to include it
-                    isVirtual = true
+                    isVirtual = true,
+                    source = "virtual",
                 })
             end
         end

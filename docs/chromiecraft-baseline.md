@@ -44,15 +44,31 @@ Git history retains all removed data if any part is worth recovering later.
 keeps the existing UI and optimizer stable without applying data from another realm. Actual gems
 and enchants already present on owned items are still parsed from their live item tooltips.
 
+## Owned inventory policy
+
+The optimizer now treats equipped items, bag items, and the last scanned character-bank contents as
+owned gear. The bank cannot be queried remotely by addons, so the player must open it once to create
+the snapshot; bank events keep that snapshot current while the bank is accessible.
+
+Unbound Bind-on-Equip gear is included in optimization. It is not auto-equipped, because equipping
+it can bind the item. Banked recommendations are also not auto-equipped. Both remain visible in the
+calculated best set so ownership and safety are separate concerns.
+
+WoW 3.3.5's `GetInventoryItemsForSlot(slot, table)` returns packed physical locations mapped to
+item IDs. TopFit uses that API for player-specific equip eligibility and stores full item links for
+bank entries so enchants and gems remain part of the item identity.
+
 ## Test boundary
 
-The first unit tests cover pure optimizer rules that can run outside the WoW client:
+The unit tests cover pure optimizer and ownership rules that can run outside the WoW client:
 
 - hard/soft active-cap detection;
 - multiple caps on one stat;
 - unreachable-cap pruning;
 - duplicate physical-item detection;
-- class armor mapping.
+- class armor mapping;
+- bank snapshot merging and physical-copy identity;
+- manual-equip blockers for virtual, banked, and unbound BoE recommendations.
 
 WoW API/tooltip integration remains an in-client integration-test concern.
 
@@ -61,10 +77,9 @@ WoW API/tooltip integration remains an in-client integration-test concern.
 These are required for the final addon, but they should be separate tasks rather than mixed into
 the baseline cleanup:
 
-1. bank inventory snapshots and an explicit policy for unbound BoE items;
-2. a verified gem/enchant candidate model with profession and meta requirements;
-3. Top-N complete gear configurations rather than only one winner;
-4. source-aware upgrade candidates and full re-optimization per candidate;
-5. spec-aware scoring beyond fixed stat weights;
-6. generated/verified ChromieCraft item and source data;
-7. replacement or simplification of the legacy UI after optimizer behavior is covered.
+1. a verified gem/enchant candidate model with profession and meta requirements;
+2. Top-N complete gear configurations rather than only one winner;
+3. source-aware upgrade candidates and full re-optimization per candidate;
+4. spec-aware scoring beyond fixed stat weights;
+5. generated/verified ChromieCraft item and source data;
+6. replacement or simplification of the legacy UI after optimizer behavior is covered.
