@@ -46,6 +46,9 @@ jobs:
           find . -type f -name '*.lua' -not -path './Libs/*' -print0 |
             xargs -0 -r -n1 luac5.1 -p
 
+      - name: Check Python generators
+        run: python3 -m py_compile tools/*.py
+
       - name: Run unit tests
         run: |
           for test_file in tests/test_*.lua; do

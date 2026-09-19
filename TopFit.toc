@@ -2,7 +2,7 @@
 ## Author: Mirroar (continued by Zae)
 ## Title: TopFit
 ## Notes: Gear Optimization made easy
-## Version: 3.3v19
+## Version: 3.3v20
 ## X-Embeds: AceAddon-3.0, AceConsole-3.0, AceDB-3.0, AceLocale-3.0, CallbackHandler-1.0, LibStub, tekKonfig
 ## X-Category: Inventory
 ## X-Credits: ckaotik (for adding almost all the gems and enchant info), tekkub, trefane (SmartFitter), vger(Pawn)
@@ -16,8 +16,10 @@ chromiecraft.lua
 data\gems.lua
 data\enchants.lua
 data\item_sockets.lua
+data\socket_bonuses.lua
 candidates.lua
 socket_metadata.lua
+variants.lua
 MinimapButton.lua
 procparser.lua
 inventory.lua
@@ -25,6 +27,7 @@ ownership.lua
 socket_integration.lua
 tooltip.lua
 calculation.lua
+variant_optimizer.lua
 options.lua
 frame.lua
 plugin.lua
