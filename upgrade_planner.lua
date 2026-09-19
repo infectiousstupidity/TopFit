@@ -325,7 +325,7 @@ local function RemoveConfiguredVirtualItems(itemListBySlot)
     end
 end
 
-local function AddProspectiveCandidate(self, itemListBySlot, candidate, requestedSlotID)
+local function AddProspectiveCandidate(itemListBySlot, candidate, requestedSlotID)
     if not candidate then
         return
     end
@@ -354,12 +354,12 @@ function TopFit:GetEquippableItems(requestedSlotID)
     if requestedSlotID then
         local wrapped = { [requestedSlotID] = result or {} }
         RemoveConfiguredVirtualItems(wrapped)
-        AddProspectiveCandidate(self, wrapped, scan.activeCandidate, requestedSlotID)
+        AddProspectiveCandidate(wrapped, scan.activeCandidate, requestedSlotID)
         return wrapped[requestedSlotID]
     end
 
     RemoveConfiguredVirtualItems(result)
-    AddProspectiveCandidate(self, result, scan.activeCandidate)
+    AddProspectiveCandidate(result, scan.activeCandidate)
     return result
 end
 
