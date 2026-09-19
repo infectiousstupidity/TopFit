@@ -4,6 +4,14 @@ tinsert = table.insert
 dofile("data/item_sockets.lua")
 dofile("socket_metadata.lua")
 
+local legacyItemInfoCalls = 0
+TopFit.GetItemInfoTable = function()
+    legacyItemInfoCalls = legacyItemInfoCalls + 1
+    return { itemID = 45610 }
+end
+
+dofile("socket_integration.lua")
+
 local tests = {}
 
 local function assertEqual(actual, expected, message)
@@ -56,6 +64,23 @@ function tests.attachHydratesPersistedCacheEntries()
     assertEqual(item.baseSocketColors[1], "META", "cached first socket")
     assertEqual(item.baseSocketColors[2], "BLUE", "cached second socket")
     assertEqual(item.socketBonusID, 3313, "cached socket bonus ID")
+end
+
+function tests.integrationHydratesItemLevelAndSocketMetadata()
+    local oldGetItemInfo = GetItemInfo
+    GetItemInfo = function()
+        return "Boundless Gaze", "item:45610", 4, 239
+    end
+
+    local item = TopFit:GetItemInfoTable("item:45610")
+
+    GetItemInfo = oldGetItemInfo
+
+    assertEqual(legacyItemInfoCalls, 1, "legacy item scanner call count")
+    assertEqual(item.itemLevel, 239, "item level")
+    assertEqual(item.baseSocketColors[1], "META", "integrated first socket")
+    assertEqual(item.baseSocketColors[2], "BLUE", "integrated second socket")
+    assertEqual(item.socketBonusID, 3313, "integrated socket bonus ID")
 end
 
 function tests.itemsWithoutSocketsGetNoMetadata()

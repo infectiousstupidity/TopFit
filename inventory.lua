@@ -85,10 +85,7 @@ function TopFit:GetItemInfoTable(item)
     TopFit.db.global.itemCache = TopFit.db.global.itemCache or {}
 
     if TopFit.db.global.itemCache[cacheKey] then
-        local cachedItem = TopFit.db.global.itemCache[cacheKey]
-        cachedItem.itemLevel = itemLevel
-        TopFit:AttachSocketMetadata(cachedItem, itemID)
-        return cachedItem
+        return TopFit.db.global.itemCache[cacheKey]
     end
 
     itemID = tonumber(itemID)
@@ -312,7 +309,6 @@ function TopFit:GetItemInfoTable(item)
         ["itemLink"] = itemLink,
         ["itemID"] = itemID,
         ["itemQuality"] = itemQuality,
-        ["itemLevel"] = itemLevel,
         ["itemMinLevel"] = itemMinLevel,
         ["itemEquipLoc"] = itemEquipLoc,
         ["itemSubType"] = itemSubType,
@@ -328,7 +324,6 @@ function TopFit:GetItemInfoTable(item)
         ["hasUnscoredProc"] = hasUnscoredProc,
     }
 
-    TopFit:AttachSocketMetadata(result, itemID)
     TopFit.db.global.itemCache[cacheKey] = result
 
     return result

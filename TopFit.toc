@@ -22,6 +22,7 @@ MinimapButton.lua
 procparser.lua
 inventory.lua
 ownership.lua
+socket_integration.lua
 tooltip.lua
 calculation.lua
 options.lua
