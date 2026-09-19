@@ -55,9 +55,7 @@ function TopFit:GetUpgradeSources(itemID)
     for _, encoded in ipairs((self.upgradeSourceData and self.upgradeSourceData[itemID]) or {}) do
         local instance = self.upgradeSourceInstances and self.upgradeSourceInstances[encoded[1]]
         local encounter = instance and instance.encounters and instance.encounters[encoded[2]]
-        local sourcePhase = instance
-            and instance.encounterPhases
-            and instance.encounterPhases[encoded[2]]
+        local sourcePhase = instance and instance.encounterPhases and instance.encounterPhases[encoded[2]]
             or (instance and instance.minChromiePhase)
             or 1
         if instance and encounter and sourcePhase <= (self.chromiecraftPhase or 1) then
@@ -222,18 +220,15 @@ function TopFit:SelectUpgradeCandidateQueue(candidates)
             if IsActiveCapList(capList) then
                 local capCandidates = CopyArray(slotCandidates)
                 table.sort(capCandidates, function(left, right)
-                    local leftValue =
-                        (left.quickBySlot[slotID] and left.quickBySlot[slotID].capValues[stat]) or 0
-                    local rightValue =
-                        (right.quickBySlot[slotID] and right.quickBySlot[slotID].capValues[stat]) or 0
+                    local leftValue = (left.quickBySlot[slotID] and left.quickBySlot[slotID].capValues[stat]) or 0
+                    local rightValue = (right.quickBySlot[slotID] and right.quickBySlot[slotID].capValues[stat]) or 0
                     if leftValue == rightValue then
                         return left.itemID < right.itemID
                     end
                     return leftValue > rightValue
                 end)
                 for index = 1, math.min(self.upgradeCapCandidatesPerSlot, #capCandidates) do
-                    local capValue =
-                        (capCandidates[index].quickBySlot[slotID].capValues[stat]) or 0
+                    local capValue = capCandidates[index].quickBySlot[slotID].capValues[stat] or 0
                     if capValue > 0 then
                         AddMarked(marked, capCandidates[index], true)
                     end
