@@ -2,7 +2,7 @@
 ## Author: Mirroar (continued by Zae)
 ## Title: TopFit
 ## Notes: Gear Optimization made easy
-## Version: 3.3v21
+## Version: 3.3v22
 ## X-Embeds: AceAddon-3.0, AceConsole-3.0, AceDB-3.0, AceLocale-3.0, CallbackHandler-1.0, LibStub, tekKonfig
 ## X-Category: Inventory
 ## X-Credits: ckaotik (for adding almost all the gems and enchant info), tekkub, trefane (SmartFitter), vger(Pawn)
@@ -17,6 +17,7 @@ data\gems.lua
 data\enchants.lua
 data\item_sockets.lua
 data\socket_bonuses.lua
+data\upgrade_sources.lua
 candidates.lua
 socket_metadata.lua
 variants.lua
@@ -29,6 +30,7 @@ tooltip.lua
 calculation.lua
 variant_optimizer.lua
 alternatives.lua
+upgrade_planner.lua
 options.lua
 frame.lua
 alternative_ui.lua
@@ -38,3 +40,4 @@ simc_export.lua
 
 plugins\stats.lua
 plugins\virtual_items.lua
+plugins\upgrades.lua
