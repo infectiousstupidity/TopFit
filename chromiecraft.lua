@@ -8,6 +8,10 @@
 -- socket optimization is intentionally disabled for now because the legacy candidate database
 -- did not model profession restrictions, meta activation, or off-color socketing correctly.
 
+TopFit.chromiecraftPhase = 3
+
+-- Keep the removed legacy empty-socket scorer disabled. The new candidate model lives in
+-- TopFit.gemCandidates and is not consumed by GetPotentialGemScore.
 TopFit.gemIDs = {}
 TopFit.talentRatingBonuses = {}
 
