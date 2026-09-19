@@ -41,6 +41,18 @@ phase-gated until Phase 4.
 Proc, on-use, movement, and similar non-static enchant effects are preserved as explicit effect tags
 rather than converted into guessed average stat values.
 
+Item socket metadata
+--------------------
+
+Original socket colors and socket-bonus IDs are generated from AzerothCore's 3.3.5 `item_template`
+data instead of reconstructed from rendered tooltips. The runtime table covers 5,944 equippable
+socketed items and uses a compact packed-number representation that is decoded only for items TopFit
+actually scans.
+
+This lets already-gemmed items retain their original red/yellow/blue/meta socket layout, which is
+required before whole-set re-gemming can be correct. Existing SavedVariables cache entries are
+hydrated with the generated metadata automatically.
+
 Owned inventory
 ---------------
 
@@ -54,8 +66,7 @@ remain recommendations only until they are withdrawn.
 
 Not implemented yet
 -------------------
-- wiring gem/enchant candidate sets into the whole-set optimizer;
-- verified item socket-layout data for already-socketed items;
+- wiring gem/enchant candidate sets and socket metadata into the whole-set optimizer;
 - Top-N alternative gear sets;
 - source-aware upgrade paths;
 - spec-specific simulation models.
@@ -72,6 +83,7 @@ Run the pure Lua tests from the repository root with:
 
 See docs/chromiecraft-baseline.md for the baseline code review and keep/remove decisions.
 See docs/candidate-model.md for gem/enchant model rules and data provenance.
+See docs/item-socket-data.md for generated socket metadata and regeneration instructions.
 
 Credits
 -------
