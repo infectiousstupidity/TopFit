@@ -98,7 +98,7 @@ function TopFit:GetCombinationGearSignature(combination)
     return BuildSignature(self, combination, LocationGearKey)
 end
 
-function TopFit:GetCombinationChangeSummary(combination)
+function TopFit.GetCombinationChangeSummary(combination)
     local summary = {
         gearChanges = 0,
         modifications = 0,
@@ -185,7 +185,7 @@ function TopFit:ConsiderAlternativeCombination(combination)
         score = combination.totalScore,
         signature = self:GetCombinationOutcomeSignature(combination),
         gearSignature = self:GetCombinationGearSignature(combination),
-        changes = self:GetCombinationChangeSummary(combination),
+        changes = self.GetCombinationChangeSummary(combination),
     }
 
     for index, existing in ipairs(entries) do
