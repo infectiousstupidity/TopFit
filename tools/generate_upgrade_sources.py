@@ -45,6 +45,11 @@ INSTANCE_NAMES = {
     ),
 }
 
+INSTANCE_PHASES = {
+    20: (3, {}),
+    25: (2, {1: 2, 2: 3}),
+}
+
 ENTRY_RE = re.compile(r"^\[(\d+)\]\s*=\s*(.+),\s*$")
 KEYED_SOURCE_RE = re.compile(
     r"\{\[1\]\s*=\s*(20|25),\[2\]\s*=\s*(\d+),\[3\]\s*=\s*1"
@@ -140,14 +145,20 @@ def generate(source: str) -> str:
     ]
     for instance_id in (20, 25):
         name, encounters = INSTANCE_NAMES[instance_id]
+        min_phase, encounter_phases = INSTANCE_PHASES[instance_id]
         out.extend(
             [
                 f"    [{instance_id}] = {{",
                 f'        name = "{name}",',
-                "        minChromiePhase = 3,",
-                "        encounters = {",
+                f"        minChromiePhase = {min_phase},",
             ]
         )
+        if encounter_phases:
+            encoded_phases = ", ".join(
+                f"[{index}] = {phase}" for index, phase in encounter_phases.items()
+            )
+            out.append(f"        encounterPhases = {{ {encoded_phases} }},")
+        out.append("        encounters = {")
         for index, encounter in enumerate(encounters, 1):
             out.append(f'            [{index}] = "{encounter}",')
         out.extend(["        },", "    },"])
