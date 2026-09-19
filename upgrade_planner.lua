@@ -31,15 +31,6 @@ local function CopyArray(input)
     return result
 end
 
-local function Contains(list, wanted)
-    for _, value in ipairs(list or {}) do
-        if value == wanted then
-            return true
-        end
-    end
-    return false
-end
-
 local function IsActiveCapList(capList)
     for _, cap in ipairs(capList or {}) do
         if cap.active then
@@ -64,7 +55,12 @@ function TopFit:GetUpgradeSources(itemID)
     for _, encoded in ipairs((self.upgradeSourceData and self.upgradeSourceData[itemID]) or {}) do
         local instance = self.upgradeSourceInstances and self.upgradeSourceInstances[encoded[1]]
         local encounter = instance and instance.encounters and instance.encounters[encoded[2]]
-        if instance and encounter and (instance.minChromiePhase or 1) <= (self.chromiecraftPhase or 1) then
+        local sourcePhase = instance
+            and instance.encounterPhases
+            and instance.encounterPhases[encoded[2]]
+            or (instance and instance.minChromiePhase)
+            or 1
+        if instance and encounter and sourcePhase <= (self.chromiecraftPhase or 1) then
             tinsert(result, {
                 type = "raid",
                 instanceID = encoded[1],
@@ -73,7 +69,7 @@ function TopFit:GetUpgradeSources(itemID)
                 encounter = encounter,
                 difficultyMask = encoded[3] or 0,
                 difficulty = DIFFICULTY_TEXT[encoded[3] or 0],
-                minChromiePhase = instance.minChromiePhase or 1,
+                minChromiePhase = sourcePhase,
             })
         end
     end
