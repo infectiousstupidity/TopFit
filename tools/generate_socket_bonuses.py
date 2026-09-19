@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -104,7 +105,7 @@ def lua_stats(stats: dict[str, int]) -> str:
     return "{ " + values + " }"
 
 
-def generate(item_sql: str, enchant_sql: str) -> str:
+def generate(item_sql: str, enchant_sql: str, item_source_ref: str, enchant_source_ref: str) -> str:
     wanted = referenced_bonus_ids(item_sql)
     rows: list[tuple[int, str, dict[str, int], list[str]]] = []
 
@@ -153,18 +154,22 @@ def generate(item_sql: str, enchant_sql: str) -> str:
     rows.sort()
     lines = [
         "-- Generated socket-bonus data for WotLK 3.3.5a.",
-        "-- Source item references: AzerothCore item_template.",
-        "-- Source enchant values: ForgedWoW/WrathForgedCore SpellItemEnchantment.",
-        "-- Only socketBonus IDs referenced by equippable socketed items are emitted.",
+        "-- Source item references: AzerothCore item_template at commit",
+        f"--   {item_source_ref}",
+        "-- Source enchant values: ForgedWoW/WrathForgedCore SpellItemEnchantment at commit",
+        f"--   {enchant_source_ref}",
+        "-- Only socketBonus IDs referenced by equippable socketed AzerothCore items are emitted.",
         "",
         "TopFit.socketBonusData = {",
     ]
     for enchant_id, name, stats, tags in rows:
-        fields = [f"name = {name!r}".replace("'", '"'), f"stats = {lua_stats(stats)}"]
+        lines.append(f"    [{enchant_id}] = {{")
+        lines.append(f"        name = {json.dumps(name)},")
+        lines.append(f"        stats = {lua_stats(stats)},")
         if tags:
             effects = ", ".join(f'"{tag}"' for tag in tags)
-            fields.append(f"effects = {{ {effects} }}")
-        lines.append(f"    [{enchant_id}] = {{ " + ", ".join(fields) + " },")
+            lines.append(f"        effects = {{ {effects} }},")
+        lines.append("    },")
     lines.extend(("}", ""))
     return "\n".join(lines)
 
@@ -173,12 +178,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("item_template_sql", type=Path)
     parser.add_argument("spell_item_enchantment_sql", type=Path)
+    parser.add_argument("--item-source-ref", required=True, help="Pinned AzerothCore commit SHA")
+    parser.add_argument("--enchant-source-ref", required=True, help="Pinned WrathForgedCore commit SHA")
     parser.add_argument("--output", type=Path, default=Path("data/socket_bonuses.lua"))
     args = parser.parse_args()
 
     output = generate(
         args.item_template_sql.read_text(encoding="utf-8"),
         args.spell_item_enchantment_sql.read_text(encoding="utf-8"),
+        args.item_source_ref,
+        args.enchant_source_ref,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(output, encoding="utf-8", newline="\n")
