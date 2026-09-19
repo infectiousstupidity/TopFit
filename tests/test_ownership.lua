@@ -22,7 +22,7 @@ function tests.bankSnapshotMergesEligibleSlotsPerPhysicalCopy()
     local second = items["bank:-1:5"]
 
     assertEqual(first.itemLink, "item:1", "first physical copy link")
-    assertEqual(first.isBoE, true, "first physical copy BoE state")
+    assertEqual(first.isUnboundBoE, true, "first physical copy BoE state")
     assertEqual(first.eligibleSlots[11], true, "first copy ring slot one")
     assertEqual(first.eligibleSlots[12], true, "first copy ring slot two")
     assertEqual(second.slot, 5, "second physical copy remains distinct")
@@ -36,7 +36,7 @@ function tests.bankSnapshotAddsOwnedCandidates()
                 items = {
                     ["bank:-1:4"] = {
                         itemLink = "item:1",
-                        isBoE = true,
+                        isUnboundBoE = true,
                         source = "bank",
                         bag = -1,
                         slot = 4,
@@ -46,7 +46,9 @@ function tests.bankSnapshotAddsOwnedCandidates()
             },
         },
     }
-    TopFit.UpdateCache = function() end
+    TopFit.PrimeOwnedItemCache = function()
+        return true
+    end
 
     local lists = { [11] = {}, [12] = {} }
     TopFit:AddBankSnapshotItems(lists)
@@ -55,13 +57,13 @@ function tests.bankSnapshotAddsOwnedCandidates()
     assertEqual(#lists[12], 1, "bank item added to second eligible slot")
     assertEqual(lists[11][1].source, "bank", "candidate source")
     assertEqual(lists[11][1].bag, -1, "candidate bank container")
-    assertEqual(lists[11][1].isBoE, true, "candidate BoE state")
+    assertEqual(lists[11][1].isUnboundBoE, true, "candidate BoE state")
 end
 
 function tests.recommendationBlockersKeepRiskyItemsManual()
     local blockers = TopFit:GetRecommendationEquipBlockers({
         { locationTable = { source = "bank", itemLink = "item:1" } },
-        { locationTable = { source = "bags", itemLink = "item:2", isBoE = true } },
+        { locationTable = { source = "bags", itemLink = "item:2", isUnboundBoE = true } },
         { locationTable = { source = "virtual", itemLink = "item:3", isVirtual = true } },
         { locationTable = { source = "equipped", itemLink = "item:4" } },
     })

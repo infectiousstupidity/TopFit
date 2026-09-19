@@ -61,29 +61,24 @@ function TopFit:JoinTables(...)
 end
 
 function TopFit:EquipRecommendedItems()
-    local blockers = TopFit:GetRecommendationEquipBlockers(TopFit.itemRecommendations)
-
-    if blockers.virtual > 0 or blockers.bank > 0 or blockers.unboundBoE > 0 then
-        if blockers.virtual > 0 then
-            TopFit:Print("The recommended set contains virtual items, so TopFit will not auto-equip it.")
-        end
-        if blockers.bank > 0 then
-            TopFit:Print("The recommended set contains " .. blockers.bank .. " banked item(s). Withdraw them and recalculate before using auto-equip.")
-        end
-        if blockers.unboundBoE > 0 then
-            TopFit:Print("The recommended set contains " .. blockers.unboundBoE .. " unbound Bind-on-Equip item(s). TopFit will not auto-equip them because doing so may bind them.")
-        end
-
+    -- skip equipping if virtual items were included
+    if (not TopFit.db.profile.sets[TopFit.ProgressFrame.selectedSet].skipVirtualItems) and TopFit.db.profile.sets[TopFit.setCode].virtualItems and #(TopFit.db.profile.sets[TopFit.setCode].virtualItems) > 0 then
+        TopFit:Print("No items will be equipped because virtual items were included in the set calculation.")
+        
+        -- reenable options and quit
         TopFit.ProgressFrame:StoppedCalculation()
         TopFit.isBlocked = false
+        
+        -- reset relevant score field
         TopFit.ignoreCapsForCalculation = nil
-
-        if #TopFit.workSetList > 0 then
+        
+        -- initiate next calculation if necessary
+        if (#TopFit.workSetList > 0) then
             TopFit:CalculateSets()
         end
         return
     end
-
+    
     -- equip them
     TopFit.updateEquipmentCounter = 10000
     TopFit.equipRetries = 0
@@ -526,7 +521,6 @@ function TopFit:OnInitialize()
     -- cache tables
     TopFit.itemsCache = {}
     TopFit.scoresCache = {}
-    TopFit:EnsureBankSnapshot()
     
     -- table for equippable item list
     TopFit.equippableItems = {}
@@ -537,10 +531,6 @@ function TopFit:OnInitialize()
     TopFit.eventFrame = CreateFrame("Frame")
     TopFit.eventFrame:RegisterEvent("BAG_UPDATE")
     TopFit.eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
-    TopFit.eventFrame:RegisterEvent("BANKFRAME_OPENED")
-    TopFit.eventFrame:RegisterEvent("BANKFRAME_CLOSED")
-    TopFit.eventFrame:RegisterEvent("PLAYERBANKSLOTS_CHANGED")
-    TopFit.eventFrame:RegisterEvent("PLAYERBANKBAGSLOTS_CHANGED")
     TopFit.eventFrame:SetScript("OnEvent", TopFit.FrameOnEvent)
     TopFit.eventFrame:SetScript("OnUpdate", TopFit.delayCalculationOnLogin)
     
@@ -715,27 +705,10 @@ function TopFit:delayCalculationOnLogin()
 end
 
 function TopFit:FrameOnEvent(event, ...)
-    if event == "BANKFRAME_OPENED" then
-        TopFit.isBankOpen = true
-        TopFit:RefreshBankSnapshot()
-        return
-    elseif event == "BANKFRAME_CLOSED" then
-        TopFit.isBankOpen = false
-        return
-    elseif event == "PLAYERBANKSLOTS_CHANGED" or event == "PLAYERBANKBAGSLOTS_CHANGED" then
-        if TopFit.isBankOpen then
-            TopFit:RefreshBankSnapshot()
-        end
-        return
-    elseif event == "BAG_UPDATE" then
-        local bag = ...
-        if TopFit.isBankOpen and bag and (bag == (BANK_CONTAINER or -1) or bag > 4) then
-            TopFit:RefreshBankSnapshot()
-            return
-        end
-
-        -- update only the changed player bag when the event identifies one
-        TopFit:collectItems(bag)
+    if (event == "BAG_UPDATE") then
+        -- update item list
+        --TODO: only update affected bag
+        TopFit:collectItems()
         
         -- check inventory for new equippable items
         if TopFit:collectEquippableItems() and not TopFit.loginDelay then

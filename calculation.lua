@@ -389,6 +389,18 @@ function TopFit:ReduceItemList()
         end
     end
     
+    -- remove BoE items
+    for slotID, itemList in pairs(TopFit.itemListBySlot) do
+        if #itemList > 0 then
+            for i = #itemList, 1, -1 do
+                if itemList[i].isBoE then
+                    tremove(itemList, i)
+                    --itemList[i].reason = itemList[i].reason.."BoE item; "
+                end
+            end
+        end
+    end
+
     -- remove items of the wrong armor material, if this set has "Force Armor Type" enabled
     if self.db.profile.sets[TopFit.setCode].forceArmorType then
         local classArmorType = TopFit:GetClassArmorType()
