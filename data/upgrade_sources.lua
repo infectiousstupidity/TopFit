@@ -29,7 +29,8 @@ TopFit.upgradeSourceInstances = {
     },
     [25] = {
         name = "Vault of Archavon",
-        minChromiePhase = 3,
+        minChromiePhase = 2,
+        encounterPhases = { [1] = 2, [2] = 3 },
         encounters = {
             [1] = "Archavon the Stone Watcher",
             [2] = "Emalon the Storm Watcher",
