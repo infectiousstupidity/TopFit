@@ -140,11 +140,13 @@ TopFit.socketBonusData = {
     },
     [2799] = {
         name = "+$i Stamina (+$n/+$f)",
-        stats = {}, effects = { "SCALED_STAMINA_SOCKET_BONUS" },
+        stats = {},
+        effects = { "SCALED_STAMINA_SOCKET_BONUS" },
     },
     [2800] = {
         name = "+$i Armor (+$n/+$f)",
-        stats = {}, effects = { "SCALED_ARMOR_SOCKET_BONUS" },
+        stats = {},
+        effects = { "SCALED_ARMOR_SOCKET_BONUS" },
     },
     [2842] = {
         name = "+8 Spirit",

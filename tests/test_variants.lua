@@ -89,14 +89,8 @@ end
 
 function tests.addedSocketDoesNotChangeBaseSocketBonusRequirement()
     local context = TopFit:BuildCandidateContext({ phase = 3, professionSkills = { [164] = 400 } })
-    local variant, reason = TopFit:BuildItemVariant(
-        glove(),
-        10,
-        { gem(40008), gem(39996), gem(40014) },
-        nil,
-        modification(3723),
-        context
-    )
+    local variant, reason =
+        TopFit:BuildItemVariant(glove(), 10, { gem(40008), gem(39996), gem(40014) }, nil, modification(3723), context)
 
     assertTrue(variant ~= nil, reason)
     assertTrue(variant.socketBonusActive, "matching original sockets should activate bonus")
@@ -105,14 +99,7 @@ end
 
 function tests.offColorBaseGemDisablesSocketBonus()
     local context = TopFit:BuildCandidateContext({ phase = 3, professionSkills = {} })
-    local variant, reason = TopFit:BuildItemVariant(
-        glove(),
-        10,
-        { gem(39996), gem(40008) },
-        nil,
-        nil,
-        context
-    )
+    local variant, reason = TopFit:BuildItemVariant(glove(), 10, { gem(39996), gem(40008) }, nil, nil, context)
 
     assertTrue(variant ~= nil, reason)
     assertFalse(variant.socketBonusActive, "swapped colors should disable socket bonus")
