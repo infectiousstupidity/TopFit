@@ -41,6 +41,21 @@ phase-gated until Phase 4.
 Proc, on-use, movement, and similar non-static enchant effects are preserved as explicit effect tags
 rather than converted into guessed average stat values.
 
+Blacksmithing Socket Bracer/Socket Gloves and Eternal Belt Buckle are modeled separately from normal
+enchants. This matters because the Blacksmithing sockets stack with a normal bracer/glove enchant.
+
+Item variant model
+------------------
+
+TopFit can now expose the legal gem, enchant, and stackable socket-modification choices for an owned
+item and compose one concrete selection into a deterministic variant. A variant contains its static
+stats, socket-bonus state, gem color contribution, Jewelcrafter unique counts, deferred meta-gem
+requirements, unscored effects, and the original item proc metadata.
+
+The model deliberately does not brute-force every possible combination yet. That would create a very
+large intermediate list. The whole-set search can instead traverse these choice dimensions directly
+and prune them using the active stat weights/caps.
+
 Item socket metadata
 --------------------
 
@@ -66,7 +81,8 @@ remain recommendations only until they are withdrawn.
 
 Not implemented yet
 -------------------
-- wiring gem/enchant candidate sets and socket metadata into the whole-set optimizer;
+- traversing item-variant choices inside the whole-set optimizer;
+- whole-character meta activation and Jewelcrafter-limit validation at search leaves;
 - Top-N alternative gear sets;
 - source-aware upgrade paths;
 - spec-specific simulation models.

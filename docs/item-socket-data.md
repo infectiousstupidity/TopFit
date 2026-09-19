@@ -45,6 +45,10 @@ Cached item tables receive:
 - `baseSocketColors`: ordered original socket colors;
 - `socketBonusID`: SpellItemEnchantment ID for the item's socket bonus.
 
+`data/socket_bonuses.lua` resolves the 158 socket-bonus IDs referenced by these items against a
+pinned 3.3.5.12340 SpellItemEnchantment export. 156 are fixed stat bonuses. Two internal test-item
+bonuses use item-level scaling and remain explicit unscored effects rather than guessed values.
+
 Profession-added sockets are not part of base metadata. Eternal Belt Buckle, Socket Bracer, and
 Socket Gloves are modeled as enchant-candidate effects instead.
 

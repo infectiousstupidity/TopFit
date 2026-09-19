@@ -54,8 +54,11 @@ Profession-restricted candidates use the 3.3.5 skill-line IDs:
 - Inscription: 773
 
 Dragon's Eyes require Jewelcrafting 350 and share a three-item `JEWELERS_GEMS` limit. Ring enchants
-require Enchanting 400. Blacksmithing sockets and Engineering/Leatherworking enhancements carry their
-own skill requirements.
+require Enchanting 400. Engineering/Leatherworking enhancements carry their own skill requirements.
+
+Blacksmithing Socket Bracer and Socket Gloves are not ordinary enchant alternatives: they add a
+separate prismatic socket and stack with a normal enchant. They therefore live in
+`socketModificationCandidates`. Eternal Belt Buckle uses the same modification path.
 
 ## Enchant effects
 
@@ -94,6 +97,6 @@ candidate effects. They are intentionally not baked into base item metadata.
 
 ## Deferred integration
 
-The next optimizer step is to build per-item gem/enchant variants from the candidate sets plus
-`baseSocketColors`, then feed those variants into the whole-set search with global meta and
-Jewelcrafter-gem constraints.
+Per-item variants are now composed by `variants.lua` without eagerly enumerating the full Cartesian
+product. The next optimizer step is to traverse those choice dimensions during whole-set search,
+then validate global meta activation and Jewelcrafter-gem limits at candidate-set leaves.
