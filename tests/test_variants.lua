@@ -53,7 +53,7 @@ function tests.baseVariantStatsRemoveCurrentGemsAndEnchant()
         enchantBonus = { HIT = 12 },
     }
 
-    local stats = TopFit:GetBaseVariantStats(item)
+    local stats = TopFit.GetBaseVariantStats(item)
 
     assertEqual(stats.STR, 20, "base strength")
     assertEqual(stats.HIT, nil, "enchant removed")
