@@ -56,11 +56,7 @@ function tests.sourceDecodingIncludesEncounterAndDifficulty()
     assertEqual(sources[1].zone, "Ulduar", "zone")
     assertEqual(sources[1].encounter, "Flame Leviathan", "encounter")
     assertEqual(sources[1].difficulty, "10/25-player", "difficulty")
-    assertEqual(
-        TopFit.GetUpgradeSourceText(sources),
-        "Ulduar - Flame Leviathan (10/25-player)",
-        "source text"
-    )
+    assertEqual(TopFit.GetUpgradeSourceText(sources), "Ulduar - Flame Leviathan (10/25-player)", "source text")
 end
 
 function tests.futurePhaseSourceIsHidden()
