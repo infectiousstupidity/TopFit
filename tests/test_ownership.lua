@@ -60,6 +60,71 @@ function tests.bankSnapshotAddsOwnedCandidates()
     assertEqual(lists[11][1].isUnboundBoE, true, "candidate BoE state")
 end
 
+function tests.persistedItemCacheSupportsColdBankLinks()
+    local itemLink = "|Hitem:123:456:1:2:3:4:0:0:0|h[Test Item]|h"
+    local cached = { marker = "persisted" }
+
+    TopFit.db = {
+        global = {
+            itemCache = {
+                ["123:456:1:2:3:4"] = cached,
+            },
+        },
+    }
+
+    assertEqual(TopFit:GetItemInfoTable(itemLink), cached, "persisted item data should not require a live item lookup")
+end
+
+function tests.slotCollectorUsesWow335ReturnTableContract()
+    local oldAddBankSnapshotItems = TopFit.AddBankSnapshotItems
+
+    TopFit.slots = { Finger0Slot = 11 }
+    TopFit.heirloomInfo = {
+        isPlateWearer = false,
+        isMailWearer = false,
+        plateHeirlooms = {},
+        mailHeirlooms = {},
+    }
+    TopFit.db = { profile = { sets = {} } }
+    TopFit.setCode = nil
+    TopFit.silentCalculation = true
+
+    UnitLevel = function()
+        return 80
+    end
+    GetInventoryItemsForSlot = function(slotID, result)
+        assertEqual(slotID, 11, "requested equipment slot")
+        assertEqual(type(result), "table", "3.3.5 API requires a caller-provided result table")
+        result[12345] = 123
+    end
+    GetContainerNumSlots = function(bag)
+        return bag == 0 and 1 or 0
+    end
+    GetContainerItemLink = function(bag, slot)
+        if bag == 0 and slot == 1 then
+            return "|Hitem:123:0:0:0:0:0:0:0:0|h[Test Ring]|h"
+        end
+        return nil
+    end
+    GetInventoryItemLink = function()
+        return nil
+    end
+    TopFit.IsUnboundBoEInContainer = function()
+        return true
+    end
+    TopFit.AddBankSnapshotItems = function() end
+
+    local items = TopFit:GetEquippableItems(11)
+
+    TopFit.AddBankSnapshotItems = oldAddBankSnapshotItems
+
+    assertEqual(#items, 1, "owned bag item should be collected")
+    assertEqual(items[1].source, "bags", "bag source")
+    assertEqual(items[1].bag, 0, "physical bag")
+    assertEqual(items[1].slot, 1, "physical bag slot")
+    assertEqual(items[1].isUnboundBoE, true, "BoE state")
+end
+
 function tests.recommendationBlockersKeepRiskyItemsManual()
     local blockers = TopFit:GetRecommendationEquipBlockers({
         { locationTable = { source = "bank", itemLink = "item:1" } },
