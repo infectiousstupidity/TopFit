@@ -68,21 +68,21 @@ local function AddOwnedCandidate(itemListBySlot, eligibleSlots, candidate)
 end
 
 function TopFit:EnsureBankSnapshot()
-    TopFit.db.char = TopFit.db.char or {}
-    TopFit.db.char.bankSnapshot = TopFit.db.char.bankSnapshot or {
+    self.db.char = self.db.char or {}
+    self.db.char.bankSnapshot = self.db.char.bankSnapshot or {
         scanned = false,
         items = {},
     }
-    TopFit.db.char.bankSnapshot.items = TopFit.db.char.bankSnapshot.items or {}
-    return TopFit.db.char.bankSnapshot
+    self.db.char.bankSnapshot.items = self.db.char.bankSnapshot.items or {}
+    return self.db.char.bankSnapshot
 end
 
-function TopFit:OwnedLocationKey(source, bag, slot)
+function TopFit.OwnedLocationKey(source, bag, slot)
     return tostring(source or "unknown") .. ":" .. tostring(bag or "") .. ":" .. tostring(slot or "")
 end
 
 function TopFit:MergeBankSnapshotEntry(items, itemLink, bag, slot, isUnboundBoE, equipSlot)
-    local key = TopFit:OwnedLocationKey("bank", bag, slot)
+    local key = self.OwnedLocationKey("bank", bag, slot)
     local entry = items[key]
 
     if not entry then
@@ -103,15 +103,15 @@ end
 
 function TopFit:IsUnboundBoEInContainer(bag, slot)
     local bindText = _G["ITEM_BIND_ON_EQUIP"]
-    if not bindText or not TopFit.scanTooltip then
+    if not bindText or not self.scanTooltip then
         return false
     end
 
-    TopFit.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
-    TopFit.scanTooltip:SetBagItem(bag, slot)
+    self.scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    self.scanTooltip:SetBagItem(bag, slot)
 
     local isUnboundBoE = false
-    for i = 1, TopFit.scanTooltip:NumLines() do
+    for i = 1, self.scanTooltip:NumLines() do
         local leftLine = _G["TFScanTooltipTextLeft" .. i]
         local lineText = leftLine and leftLine:GetText()
         if lineText and string.find(lineText, bindText, 1, true) then
@@ -120,7 +120,7 @@ function TopFit:IsUnboundBoEInContainer(bag, slot)
         end
     end
 
-    TopFit.scanTooltip:Hide()
+    self.scanTooltip:Hide()
     return isUnboundBoE
 end
 
@@ -136,29 +136,29 @@ function TopFit:GetItemInfoTable(item)
 end
 
 function TopFit:PrimeOwnedItemCache(itemLink)
-    if TopFit.itemsCache[itemLink] then
-        return TopFit.itemsCache[itemLink]
+    if self.itemsCache[itemLink] then
+        return self.itemsCache[itemLink]
     end
 
-    local itemTable = TopFit:GetItemInfoTable(itemLink)
+    local itemTable = self:GetItemInfoTable(itemLink)
     if not itemTable then
         return nil
     end
 
-    TopFit.itemsCache[itemLink] = itemTable
-    TopFit:CalculateItemScore(itemLink)
+    self.itemsCache[itemLink] = itemTable
+    self:CalculateItemScore(itemLink)
     return itemTable
 end
 
 function TopFit:RefreshBankSnapshot()
-    if not TopFit.isBankOpen then
+    if not self.isBankOpen then
         return false
     end
 
-    local snapshot = TopFit:EnsureBankSnapshot()
+    local snapshot = self:EnsureBankSnapshot()
     local items = {}
 
-    for _, equipSlot in pairs(TopFit.slots) do
+    for _, equipSlot in pairs(self.slots) do
         local available = {}
         GetInventoryItemsForSlot(equipSlot, available)
 
@@ -169,15 +169,15 @@ function TopFit:RefreshBankSnapshot()
                 local itemLink = GetContainerItemLink(container, slot)
 
                 if itemLink then
-                    TopFit:MergeBankSnapshotEntry(
+                    self:MergeBankSnapshotEntry(
                         items,
                         itemLink,
                         container,
                         slot,
-                        TopFit:IsUnboundBoEInContainer(container, slot),
+                        self:IsUnboundBoEInContainer(container, slot),
                         equipSlot
                     )
-                    TopFit:PrimeOwnedItemCache(itemLink)
+                    self:PrimeOwnedItemCache(itemLink)
                 end
             end
         end
@@ -190,18 +190,18 @@ function TopFit:RefreshBankSnapshot()
     for _ in pairs(items) do
         count = count + 1
     end
-    TopFit:Debug("Bank snapshot updated with " .. count .. " equippable item(s).")
+    self:Debug("Bank snapshot updated with " .. count .. " equippable item(s).")
     return true
 end
 
 function TopFit:AddBankSnapshotItems(itemListBySlot)
-    local snapshot = TopFit:EnsureBankSnapshot()
+    local snapshot = self:EnsureBankSnapshot()
     if not snapshot.scanned then
         return
     end
 
     for _, entry in pairs(snapshot.items) do
-        if TopFit:PrimeOwnedItemCache(entry.itemLink) then
+        if self:PrimeOwnedItemCache(entry.itemLink) then
             local eligibleSlots = {}
             for slotID, eligible in pairs(entry.eligibleSlots or {}) do
                 if eligible then
@@ -215,18 +215,20 @@ function TopFit:AddBankSnapshotItems(itemListBySlot)
 end
 
 function TopFit:WarnIfBankSnapshotMissing()
-    local snapshot = TopFit:EnsureBankSnapshot()
-    if snapshot.scanned or TopFit.warnedAboutMissingBankSnapshot then
+    local snapshot = self:EnsureBankSnapshot()
+    if snapshot.scanned or self.warnedAboutMissingBankSnapshot then
         return
     end
 
-    TopFit.warnedAboutMissingBankSnapshot = true
-    TopFit:Print(
+    self.warnedAboutMissingBankSnapshot = true
+    self:Print(
         "Bank items are not included yet. Open your bank once and TopFit will remember its equippable contents."
     )
 end
 
 function TopFit:GetRecommendationEquipBlockers(recommendations)
+    recommendations = recommendations or self.itemRecommendations
+
     local blockers = {
         virtual = 0,
         bank = 0,
@@ -257,7 +259,7 @@ function TopFit:GetEquippableItems(requestedSlotID)
     local itemListBySlot = {}
     local availableSlots = {}
 
-    for _, slotID in pairs(TopFit.slots) do
+    for _, slotID in pairs(self.slots) do
         itemListBySlot[slotID] = {}
 
         local slotAvailableItems = {}
@@ -266,14 +268,14 @@ function TopFit:GetEquippableItems(requestedSlotID)
             AddEligibleSlot(availableSlots, itemID, slotID)
         end
 
-        if TopFit.heirloomInfo.isPlateWearer and (slotID == 3 or slotID == 5) and UnitLevel("player") < 40 then
-            for _, itemID in pairs(TopFit.heirloomInfo.plateHeirlooms[slotID]) do
+        if self.heirloomInfo.isPlateWearer and (slotID == 3 or slotID == 5) and UnitLevel("player") < 40 then
+            for _, itemID in pairs(self.heirloomInfo.plateHeirlooms[slotID]) do
                 AddEligibleSlot(availableSlots, itemID, slotID)
             end
         end
 
-        if TopFit.heirloomInfo.isMailWearer and (slotID == 3 or slotID == 5) and UnitLevel("player") < 40 then
-            for _, itemID in pairs(TopFit.heirloomInfo.mailHeirlooms[slotID]) do
+        if self.heirloomInfo.isMailWearer and (slotID == 3 or slotID == 5) and UnitLevel("player") < 40 then
+            for _, itemID in pairs(self.heirloomInfo.mailHeirlooms[slotID]) do
                 AddEligibleSlot(availableSlots, itemID, slotID)
             end
         end
@@ -287,7 +289,7 @@ function TopFit:GetEquippableItems(requestedSlotID)
             if itemLink and eligibleSlots then
                 AddOwnedCandidate(itemListBySlot, eligibleSlots, {
                     itemLink = itemLink,
-                    isUnboundBoE = TopFit:IsUnboundBoEInContainer(bag, slot),
+                    isUnboundBoE = self:IsUnboundBoEInContainer(bag, slot),
                     source = "bags",
                     bag = bag,
                     slot = slot,
@@ -296,7 +298,7 @@ function TopFit:GetEquippableItems(requestedSlotID)
         end
     end
 
-    for _, invSlot in pairs(TopFit.slots) do
+    for _, invSlot in pairs(self.slots) do
         local itemLink = GetInventoryItemLink("player", invSlot)
         local eligibleSlots = availableSlots[ItemIDFromLink(itemLink)]
 
@@ -309,20 +311,20 @@ function TopFit:GetEquippableItems(requestedSlotID)
         end
     end
 
-    TopFit:AddBankSnapshotItems(itemListBySlot)
-    if not TopFit.silentCalculation then
-        TopFit:WarnIfBankSnapshotMissing()
+    self:AddBankSnapshotItems(itemListBySlot)
+    if not self.silentCalculation then
+        self:WarnIfBankSnapshotMissing()
     end
 
     if
-        TopFit.setCode
-        and TopFit.db.profile.sets[TopFit.setCode].virtualItems
-        and not TopFit.db.profile.sets[TopFit.setCode].skipVirtualItems
+        self.setCode
+        and self.db.profile.sets[self.setCode].virtualItems
+        and not self.db.profile.sets[self.setCode].skipVirtualItems
     then
-        for _, itemLink in pairs(TopFit.db.profile.sets[TopFit.setCode].virtualItems) do
-            local item = TopFit:GetCachedItem(itemLink)
+        for _, itemLink in pairs(self.db.profile.sets[self.setCode].virtualItems) do
+            local item = self:GetCachedItem(itemLink)
             if item then
-                AddOwnedCandidate(itemListBySlot, TopFit:GetEquipLocationsByInvType(item.itemEquipLoc), {
+                AddOwnedCandidate(itemListBySlot, self:GetEquipLocationsByInvType(item.itemEquipLoc), {
                     itemLink = itemLink,
                     isVirtual = true,
                     source = "virtual",
@@ -340,40 +342,40 @@ end
 -- Risky owned items remain valid recommendations. Safety is applied only when TopFit is about to
 -- equip the result, so the optimizer does not artificially downgrade banked or unbound BoE gear.
 function TopFit:EquipRecommendedItems()
-    local blockers = TopFit:GetRecommendationEquipBlockers(TopFit.itemRecommendations)
+    local blockers = self:GetRecommendationEquipBlockers(self.itemRecommendations)
 
     if blockers.virtual > 0 or blockers.bank > 0 or blockers.unboundBoE > 0 then
         if blockers.virtual > 0 then
-            TopFit:Print("The recommended set contains virtual items, so TopFit will not auto-equip it.")
+            self:Print("The recommended set contains virtual items, so TopFit will not auto-equip it.")
         end
         if blockers.bank > 0 then
-            TopFit:Print(
+            self:Print(
                 "The recommended set contains "
                     .. blockers.bank
                     .. " banked item(s). Withdraw them and recalculate before using auto-equip."
             )
         end
         if blockers.unboundBoE > 0 then
-            TopFit:Print(
+            self:Print(
                 "The recommended set contains "
                     .. blockers.unboundBoE
                     .. " unbound Bind-on-Equip item(s). TopFit will not auto-equip them because doing so may bind them."
             )
         end
 
-        TopFit.ProgressFrame:StoppedCalculation()
-        TopFit.isBlocked = false
-        TopFit.ignoreCapsForCalculation = nil
+        self.ProgressFrame:StoppedCalculation()
+        self.isBlocked = false
+        self.ignoreCapsForCalculation = nil
 
-        if #TopFit.workSetList > 0 then
-            TopFit:CalculateSets()
+        if #self.workSetList > 0 then
+            self:CalculateSets()
         end
         return
     end
 
-    TopFit.updateEquipmentCounter = 10000
-    TopFit.equipRetries = 0
-    TopFit.updateFrame:SetScript("OnUpdate", TopFit.onUpdateForEquipment)
+    self.updateEquipmentCounter = 10000
+    self.equipRetries = 0
+    self.updateFrame:SetScript("OnUpdate", self.onUpdateForEquipment)
 end
 
 function TopFit:FrameOnEvent(event, ...)
