@@ -62,10 +62,10 @@ function tests.metaActivationUsesWholeLoadoutColors()
     local purple = gem(40022)
 
     assertTrue(
-        TopFit:IsMetaConditionSatisfied(chaotic, TopFit:CountGemColors({ blue, purple })),
+        TopFit.IsMetaConditionSatisfied(chaotic, TopFit:CountGemColors({ blue, purple })),
         "two blue contributions"
     )
-    assertFalse(TopFit:IsMetaConditionSatisfied(chaotic, TopFit:CountGemColors({ blue })), "one blue contribution")
+    assertFalse(TopFit.IsMetaConditionSatisfied(chaotic, TopFit:CountGemColors({ blue })), "one blue contribution")
 end
 
 function tests.currentPhaseExcludesTocEpicGems()
@@ -190,8 +190,8 @@ function tests.candidateSetsAreDeterministicAndSocketSpecific()
 
     assertTrue(#sets[1] > 0, "colored socket has candidates")
     assertTrue(#sets[2] > 0, "meta socket has candidates")
-    assertFalse(TopFit:GemContributesColor(sets[1][1], "META"), "normal socket excludes meta gems")
-    assertTrue(TopFit:GemContributesColor(sets[2][1], "META"), "meta socket contains only meta gems")
+    assertFalse(TopFit.GemContributesColor(sets[1][1], "META"), "normal socket excludes meta gems")
+    assertTrue(TopFit.GemContributesColor(sets[2][1], "META"), "meta socket contains only meta gems")
 
     for index = 2, #sets[1] do
         assertTrue(sets[1][index - 1].itemID < sets[1][index].itemID, "candidate order is stable by item ID")
