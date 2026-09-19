@@ -83,9 +83,17 @@ source database:
 - `item_template.socketBonus` references SpellItemEnchantment.
 - `item_template.GemProperties` references GemProperties.
 
+## Item socket metadata
+
+The original socket-layout blocker is now handled by generated AzerothCore data. Cached item tables
+receive `baseSocketColors` and `socketBonusID` even when every original socket is already filled,
+so solver code no longer has to infer original colors from the rendered tooltip.
+
+Profession-added sockets such as Eternal Belt Buckle, Socket Bracer, and Socket Gloves remain
+candidate effects. They are intentionally not baked into base item metadata.
+
 ## Deferred integration
 
-The next optimizer step needs verified original socket layout for each item. The current tooltip
-scanner can see empty sockets and installed gems, but cannot safely reconstruct every original
-socket color after an item has already been socketed. The whole-set gem/enchant solver should consume
-generated item socket metadata rather than guess from rendered tooltips.
+The next optimizer step is to build per-item gem/enchant variants from the candidate sets plus
+`baseSocketColors`, then feed those variants into the whole-set search with global meta and
+Jewelcrafter-gem constraints.
