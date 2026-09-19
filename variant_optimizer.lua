@@ -444,7 +444,8 @@ function TopFit:EquipRecommendedItems()
         local location = recommendation.locationTable
         if location and location.requiresModification then
             self:Print(
-                "The recommended set includes gem or enchant changes. TopFit will not auto-equip it until those changes are applied."
+                "The recommended set includes gem or enchant changes. "
+                    .. "TopFit will not auto-equip it until those changes are applied."
             )
             self.ProgressFrame:StoppedCalculation()
             self.isBlocked = false
