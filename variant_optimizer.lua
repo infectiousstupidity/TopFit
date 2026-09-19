@@ -3,6 +3,8 @@
 local LegacySaveCurrentCombination = TopFit.SaveCurrentCombination
 local LegacyEquipRecommendedItems = TopFit.EquipRecommendedItems
 local LegacyCalculateBestInSlot = TopFit.CalculateBestInSlot
+local LegacyIsCapsReached = TopFit.IsCapsReached
+local LegacyIsCapsUnreachable = TopFit.IsCapsUnreachable
 
 local function CopyLocation(location)
     local result = {}
@@ -52,12 +54,18 @@ end
 
 function TopFit:ExpandOwnedItemVariants()
     local expandedBySlot = {}
+    local variantCache = {}
 
     for slotID, locations in pairs(self.itemListBySlot or {}) do
         local expanded = {}
+        variantCache[slotID] = variantCache[slotID] or {}
         for _, location in ipairs(locations) do
             local physicalItemLink = location.physicalItemLink or location.itemLink
-            local variants = self:BuildItemVariants(physicalItemLink, slotID, self.setCode)
+            local variants = variantCache[slotID][physicalItemLink]
+            if not variants then
+                variants = self:BuildItemVariants(physicalItemLink, slotID, self.setCode)
+                variantCache[slotID][physicalItemLink] = variants
+            end
 
             if #variants == 0 then
                 tinsert(expanded, location)
@@ -240,6 +248,121 @@ function TopFit:IsDuplicateItem(currentSlot)
     return false
 end
 
+local function AddVariantConstraints(state, location)
+    local variant = location and location.variant
+    if not variant then
+        return
+    end
+
+    for color in pairs(state.colors) do
+        state.colors[color] = state.colors[color] + ((variant.gemColorCounts and variant.gemColorCounts[color]) or 0)
+    end
+    for group, count in pairs(variant.uniqueGemCounts or {}) do
+        state.uniqueCounts[group] = (state.uniqueCounts[group] or 0) + count
+    end
+    for _, metaGem in ipairs(variant.metaGems or {}) do
+        tinsert(state.metaGems, metaGem)
+    end
+    state.hasUnknownGem = state.hasUnknownGem or variant.hasUnknownGem
+end
+
+function TopFit:GetVariantUniqueLimits()
+    if self.variantUniqueLimits then
+        return self.variantUniqueLimits
+    end
+
+    self.variantUniqueLimits = {}
+    for _, gem in ipairs(self.gemCandidates or {}) do
+        if gem.uniqueGroup and gem.uniqueLimit then
+            self.variantUniqueLimits[gem.uniqueGroup] = gem.uniqueLimit
+        end
+    end
+    return self.variantUniqueLimits
+end
+
+function TopFit:GetVariantConstraintState(locations)
+    local state = {
+        colors = { RED = 0, YELLOW = 0, BLUE = 0 },
+        uniqueCounts = {},
+        uniqueLimits = self:GetVariantUniqueLimits(),
+        metaGems = {},
+        hasUnknownGem = false,
+    }
+
+    for _, location in pairs(locations or {}) do
+        AddVariantConstraints(state, location)
+    end
+    return state
+end
+
+function TopFit:IsVariantConstraintStateValid(state, requireActiveMeta)
+    for group, count in pairs(state.uniqueCounts or {}) do
+        local limit = state.uniqueLimits and state.uniqueLimits[group]
+        if limit and count > limit then
+            return false, "unique-limit"
+        end
+    end
+
+    if requireActiveMeta and not state.hasUnknownGem then
+        for _, metaGem in ipairs(state.metaGems or {}) do
+            if not self.IsMetaConditionSatisfied(metaGem, state.colors or {}) then
+                return false, "meta-inactive"
+            end
+        end
+    end
+
+    return true
+end
+
+function TopFit:GetSelectedVariantLocations(currentSlot)
+    local locations = {}
+    for slotID = 1, currentSlot or 20 do
+        local selectedIndex = self.slotCounters and self.slotCounters[slotID]
+        if selectedIndex and selectedIndex > 0 and self.itemListBySlot[slotID] then
+            local location = self.itemListBySlot[slotID][selectedIndex]
+            if location then
+                tinsert(locations, location)
+            end
+        end
+    end
+    return locations
+end
+
+function TopFit:WouldViolateVariantUniqueLimits(itemsAlreadyChosen, candidate)
+    local locations = {}
+    for _, location in pairs(itemsAlreadyChosen or {}) do
+        if location then
+            tinsert(locations, location)
+        end
+    end
+    if candidate then
+        tinsert(locations, candidate)
+    end
+
+    local state = self:GetVariantConstraintState(locations)
+    local valid, reason = self:IsVariantConstraintStateValid(state, false)
+    return not valid and reason == "unique-limit"
+end
+
+function TopFit:IsCapsReached(currentSlot)
+    if not LegacyIsCapsReached(self, currentSlot) then
+        return false
+    end
+
+    local state = self:GetVariantConstraintState(self:GetSelectedVariantLocations(currentSlot))
+    local valid = self:IsVariantConstraintStateValid(state, true)
+    return valid
+end
+
+function TopFit:IsCapsUnreachable(currentSlot)
+    local state = self:GetVariantConstraintState(self:GetSelectedVariantLocations(currentSlot))
+    local valid, reason = self:IsVariantConstraintStateValid(state, false)
+    if not valid and reason == "unique-limit" then
+        return true
+    end
+    return LegacyIsCapsUnreachable(self, currentSlot)
+end
+
 function TopFit:CalculateBestInSlot(itemsAlreadyChosen, insert, requestedSlotID, setCode, assertion)
     setCode = setCode or self.setCode
     local bestBySlot = {}
@@ -266,7 +389,16 @@ function TopFit:CalculateBestInSlot(itemsAlreadyChosen, insert, requestedSlotID,
                     end
                 end
 
-                if itemTable and levelAllowed and allowed and not used and (not bestScore or score > bestScore) then
+                local violatesUniqueLimit = self:WouldViolateVariantUniqueLimits(itemsAlreadyChosen, location)
+
+                if
+                    itemTable
+                    and levelAllowed
+                    and allowed
+                    and not used
+                    and not violatesUniqueLimit
+                    and (not bestScore or score > bestScore)
+                then
                     best = location
                     bestScore = score
                 end
@@ -288,48 +420,8 @@ function TopFit:CalculateBestInSlot(itemsAlreadyChosen, insert, requestedSlotID,
 end
 
 function TopFit:IsVariantCombinationValid(combination)
-    local colors = { RED = 0, YELLOW = 0, BLUE = 0 }
-    local uniqueCounts = {}
-    local uniqueLimits = {}
-    local metaGems = {}
-    local hasUnknownGem = false
-
-    for _, gem in ipairs(self.gemCandidates or {}) do
-        if gem.uniqueGroup and gem.uniqueLimit then
-            uniqueLimits[gem.uniqueGroup] = gem.uniqueLimit
-        end
-    end
-
-    for _, location in pairs((combination and combination.items) or {}) do
-        local variant = location.variant
-        if variant then
-            for color in pairs(colors) do
-                colors[color] = colors[color] + ((variant.gemColorCounts and variant.gemColorCounts[color]) or 0)
-            end
-            for group, count in pairs(variant.uniqueGemCounts or {}) do
-                uniqueCounts[group] = (uniqueCounts[group] or 0) + count
-            end
-            for _, metaGem in ipairs(variant.metaGems or {}) do
-                tinsert(metaGems, metaGem)
-            end
-            hasUnknownGem = hasUnknownGem or variant.hasUnknownGem
-        end
-    end
-
-    for group, count in pairs(uniqueCounts) do
-        local limit = uniqueLimits[group]
-        if limit and count > limit then
-            return false, "unique-limit"
-        end
-    end
-
-    for _, metaGem in ipairs(metaGems) do
-        if not self.IsMetaConditionSatisfied(metaGem, colors) and not hasUnknownGem then
-            return false, "meta-inactive"
-        end
-    end
-
-    return true
+    local state = self:GetVariantConstraintState((combination and combination.items) or {})
+    return self:IsVariantConstraintStateValid(state, true)
 end
 
 function TopFit:SaveCurrentCombination()

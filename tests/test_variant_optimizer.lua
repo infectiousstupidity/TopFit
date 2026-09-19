@@ -12,6 +12,12 @@ end
 TopFit.CalculateBestInSlot = function()
     return nil
 end
+TopFit.IsCapsReached = function()
+    return true
+end
+TopFit.IsCapsUnreachable = function()
+    return false
+end
 
 dofile("data/gems.lua")
 dofile("candidates.lua")
@@ -125,6 +131,90 @@ function tests.invalidNewBestIsRolledBack()
 
     assertEqual(TopFit.bestCombination, previous, "invalid best combination rolled back")
     assertEqual(TopFit.maxScore, 10, "previous score restored")
+end
+
+function tests.capsDoNotTerminateWhileMetaIsInactive()
+    local chaotic = gem(41285)
+    TopFit.itemListBySlot = {
+        [1] = {
+            {
+                itemLink = "meta",
+                variant = {
+                    gemColorCounts = { RED = 0, YELLOW = 0, BLUE = 0 },
+                    uniqueGemCounts = {},
+                    metaGems = { chaotic },
+                },
+            },
+        },
+        [2] = {
+            {
+                itemLink = "blue",
+                variant = {
+                    gemColorCounts = { RED = 0, YELLOW = 0, BLUE = 2 },
+                    uniqueGemCounts = {},
+                    metaGems = {},
+                },
+            },
+        },
+    }
+    TopFit.slotCounters = { [1] = 1 }
+
+    assertFalse(TopFit:IsCapsReached(1), "inactive meta keeps recursion open")
+
+    TopFit.slotCounters[2] = 1
+    assertTrue(TopFit:IsCapsReached(2), "active meta allows cap completion")
+end
+
+function tests.bestInSlotSkipsVariantThatWouldExceedJewelcrafterLimit()
+    local itemTables = {
+        jc = { itemMinLevel = 80 },
+        normal = { itemMinLevel = 80 },
+    }
+    TopFit.characterLevel = 80
+    TopFit.ignoreCapsForCalculation = false
+    TopFit.itemListBySlot = {
+        [11] = {
+            {
+                itemLink = "jc",
+                physicalKey = "bags:0:1",
+                variant = {
+                    gemColorCounts = { RED = 1, YELLOW = 0, BLUE = 0 },
+                    uniqueGemCounts = { JEWELERS_GEMS = 1 },
+                    metaGems = {},
+                },
+            },
+            {
+                itemLink = "normal",
+                physicalKey = "bags:0:2",
+                variant = {
+                    gemColorCounts = { RED = 1, YELLOW = 0, BLUE = 0 },
+                    uniqueGemCounts = {},
+                    metaGems = {},
+                },
+            },
+        },
+    }
+    TopFit.GetCachedItem = function(_, link)
+        return itemTables[link]
+    end
+    TopFit.GetItemScore = function(_, link)
+        return link == "jc" and 20 or 10
+    end
+
+    local chosen = {
+        {
+            itemLink = "already-jc",
+            physicalKey = "bags:0:3",
+            variant = {
+                gemColorCounts = { RED = 3, YELLOW = 0, BLUE = 0 },
+                uniqueGemCounts = { JEWELERS_GEMS = 3 },
+                metaGems = {},
+            },
+        },
+    }
+
+    local best = TopFit:CalculateBestInSlot(chosen, false, 11, "test")
+    assertEqual(best.itemLink, "normal", "greedy fill respects global Jeweler's Gem limit")
 end
 
 function tests.bestInSlotDoesNotReuseChosenPhysicalCopy()

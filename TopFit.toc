@@ -16,8 +16,10 @@ chromiecraft.lua
 data\gems.lua
 data\enchants.lua
 data\item_sockets.lua
+data\socket_bonuses.lua
 candidates.lua
 socket_metadata.lua
+variants.lua
 MinimapButton.lua
 procparser.lua
 inventory.lua
@@ -25,6 +27,7 @@ ownership.lua
 socket_integration.lua
 tooltip.lua
 calculation.lua
+variant_optimizer.lua
 options.lua
 frame.lua
 plugin.lua
