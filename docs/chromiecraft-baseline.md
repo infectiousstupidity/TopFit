@@ -77,9 +77,8 @@ WoW API/tooltip integration remains an in-client integration-test concern.
 These are required for the final addon, but they should be separate tasks rather than mixed into
 the baseline cleanup:
 
-1. Top-N complete gear configurations rather than only one winner;
-2. source-aware upgrade candidates and full re-optimization per candidate;
-3. spec-aware scoring beyond fixed stat weights, including currently unscored proc/meta effects;
-4. generated/verified ChromieCraft item source/acquisition data;
-5. an optional exhaustive gem/enchant mode if runtime profiling shows it is safe;
-6. replacement or simplification of the legacy UI after optimizer behavior is covered.
+1. source-aware upgrade candidates and full re-optimization per candidate;
+2. spec-aware scoring beyond fixed stat weights, including currently unscored proc/meta effects;
+3. generated/verified ChromieCraft item source/acquisition data;
+4. an optional exhaustive gem/enchant mode if runtime profiling shows it is safe;
+5. replacement or simplification of the legacy UI after optimizer behavior is covered.
