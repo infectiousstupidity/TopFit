@@ -89,8 +89,7 @@ function TopFit:InstallAlternativeControls()
         return
     end
 
-    frame.alternativePrevButton =
-        CreateFrame("Button", "TopFit_AlternativePrevButton", frame, "UIPanelButtonTemplate")
+    frame.alternativePrevButton = CreateFrame("Button", "TopFit_AlternativePrevButton", frame, "UIPanelButtonTemplate")
     frame.alternativePrevButton:SetWidth(24)
     frame.alternativePrevButton:SetHeight(22)
     frame.alternativePrevButton:SetPoint("TOPLEFT", frame.selectSetLabel, "BOTTOMLEFT", 2, 0)
@@ -106,8 +105,7 @@ function TopFit:InstallAlternativeControls()
     frame.alternativeSelectorText:SetPoint("LEFT", frame.alternativePrevButton, "RIGHT", 2, 0)
     frame.alternativeSelectorText:SetJustifyH("CENTER")
 
-    frame.alternativeNextButton =
-        CreateFrame("Button", "TopFit_AlternativeNextButton", frame, "UIPanelButtonTemplate")
+    frame.alternativeNextButton = CreateFrame("Button", "TopFit_AlternativeNextButton", frame, "UIPanelButtonTemplate")
     frame.alternativeNextButton:SetWidth(24)
     frame.alternativeNextButton:SetHeight(22)
     frame.alternativeNextButton:SetPoint("LEFT", frame.alternativeSelectorText, "RIGHT", 2, 0)
@@ -116,8 +114,7 @@ function TopFit:InstallAlternativeControls()
         TopFit:SelectAlternative(1)
     end)
 
-    frame.alternativeUseButton =
-        CreateFrame("Button", "TopFit_AlternativeUseButton", frame, "UIPanelButtonTemplate")
+    frame.alternativeUseButton = CreateFrame("Button", "TopFit_AlternativeUseButton", frame, "UIPanelButtonTemplate")
     frame.alternativeUseButton:SetWidth(44)
     frame.alternativeUseButton:SetHeight(22)
     frame.alternativeUseButton:SetPoint("LEFT", frame.alternativeNextButton, "RIGHT", 2, 0)
