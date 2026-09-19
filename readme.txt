@@ -53,6 +53,26 @@ This lets already-gemmed items retain their original red/yellow/blue/meta socket
 required before whole-set re-gemming can be correct. Existing SavedVariables cache entries are
 hydrated with the generated metadata automatically.
 
+Gem/enchant variant optimization
+--------------------------------
+
+Each owned physical item is now expanded into a bounded set of useful gem/enchant variants before
+the whole-set search runs. The frontier retains the current setup, strongest weighted choices,
+cap-relevant choices, socket-color/meta alternatives, Jewelcrafter/non-Jewelcrafter alternatives,
+and the current gem/enchant where known.
+
+The whole-set validator enforces meta activation and global Jeweler's Gem limits across all selected
+items. Physical identity is preserved independently of the hypothetical item link, so one ring or
+trinket cannot be used twice merely by choosing two different variants.
+
+Socket bonuses use a generated WotLK bonus-stat table. Unsupported bonus IDs and non-static effects
+such as proc enchants or percentage meta effects remain explicitly unscored rather than guessed.
+Recommendations containing gem/enchant changes are never auto-equipped.
+
+This is intentionally a bounded frontier, not an exhaustive proof over every possible gem/enchant
+permutation. That keeps the 3.3.5 client responsive while preserving the dimensions that can change
+the optimum under the current stat-weight/cap model.
+
 Owned inventory
 ---------------
 
@@ -66,10 +86,10 @@ remain recommendations only until they are withdrawn.
 
 Not implemented yet
 -------------------
-- wiring gem/enchant candidate sets and socket metadata into the whole-set optimizer;
 - Top-N alternative gear sets;
 - source-aware upgrade paths;
-- spec-specific simulation models.
+- spec-specific simulation models for currently unscored proc/meta effects;
+- an exhaustive optimizer mode if profiling shows it can be made safe on the 3.3.5 client.
 
 Development
 -----------
@@ -84,6 +104,7 @@ Run the pure Lua tests from the repository root with:
 See docs/chromiecraft-baseline.md for the baseline code review and keep/remove decisions.
 See docs/candidate-model.md for gem/enchant model rules and data provenance.
 See docs/item-socket-data.md for generated socket metadata and regeneration instructions.
+See docs/variant-optimizer.md for the bounded gem/enchant search and its correctness boundary.
 
 Credits
 -------

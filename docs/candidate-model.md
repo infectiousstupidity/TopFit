@@ -92,8 +92,13 @@ so solver code no longer has to infer original colors from the rendered tooltip.
 Profession-added sockets such as Eternal Belt Buckle, Socket Bracer, and Socket Gloves remain
 candidate effects. They are intentionally not baked into base item metadata.
 
-## Deferred integration
+## Optimizer integration
 
-The next optimizer step is to build per-item gem/enchant variants from the candidate sets plus
-`baseSocketColors`, then feed those variants into the whole-set search with global meta and
-Jewelcrafter-gem constraints.
+`variants.lua` now builds a bounded per-item frontier from these candidates and the generated
+`baseSocketColors`. `variant_optimizer.lua` feeds those variants into TopFit's whole-set search
+while preserving physical-item identity and enforcing meta/Jewelcrafter constraints across the
+complete selected set.
+
+The frontier is deliberately bounded. It preserves current, high-score, cap-relevant, color/meta,
+and profession-constraint alternatives, but it is not an exhaustive enumeration of every possible
+gem/enchant permutation. Non-static effects remain explicitly unscored until spec-aware models exist.
