@@ -170,7 +170,7 @@ function tests.changeSummarySeparatesGearAndModificationWork()
         [5] = location("item5", 5, { source = "virtual", isVirtual = true }),
     })
 
-    local summary = TopFit:GetCombinationChangeSummary(combo)
+    local summary = TopFit.GetCombinationChangeSummary(combo)
     assertEqual(summary.gearChanges, 3, "bag, bank, and virtual items change gear")
     assertEqual(summary.modifications, 1, "one gem/enchant modification")
     assertEqual(summary.banked, 1, "one banked item")
