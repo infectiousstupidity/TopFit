@@ -397,8 +397,7 @@ local function CurrentVariantMetadata(self, itemLink)
                     end
                 end
                 if gem.uniqueGroup then
-                    metadata.uniqueGemCounts[gem.uniqueGroup] =
-                        (metadata.uniqueGemCounts[gem.uniqueGroup] or 0) + 1
+                    metadata.uniqueGemCounts[gem.uniqueGroup] = (metadata.uniqueGemCounts[gem.uniqueGroup] or 0) + 1
                 end
             end
         end
