@@ -1,5 +1,7 @@
 -- Generated file. Do not edit by hand.
--- Source: https://github.com/azerothcore/azerothcore-wotlk/blob/3df225f8cb890379816794c6699cdc891d738e79/data/sql/base/db_world/item_template.sql
+-- Source repository: https://github.com/azerothcore/azerothcore-wotlk
+-- Source commit: 3df225f8cb890379816794c6699cdc891d738e79
+-- Source path: data/sql/base/db_world/item_template.sql
 -- AzerothCore item_template socketColor_1..3 + socketBonus, packed as:
 --   c1 + c2*16 + c3*256 + socketBonus*4096
 -- Socket masks: META=1, RED=2, YELLOW=4, BLUE=8, PRISMATIC=14.

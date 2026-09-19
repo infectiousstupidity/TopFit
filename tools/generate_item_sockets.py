@@ -94,7 +94,9 @@ def generate(sql: str, source_ref: str) -> str:
     rows.sort()
     lines = [
         "-- Generated file. Do not edit by hand.",
-        f"-- Source: https://github.com/{SOURCE_REPO}/blob/{source_ref}/{SOURCE_PATH}",
+        f"-- Source repository: https://github.com/{SOURCE_REPO}",
+        f"-- Source commit: {source_ref}",
+        f"-- Source path: {SOURCE_PATH}",
         "-- AzerothCore item_template socketColor_1..3 + socketBonus, packed as:",
         "--   c1 + c2*16 + c3*256 + socketBonus*4096",
         "-- Socket masks: META=1, RED=2, YELLOW=4, BLUE=8, PRISMATIC=14.",
