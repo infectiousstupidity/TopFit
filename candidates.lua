@@ -65,7 +65,7 @@ function TopFit:BuildCandidateContext(overrides)
     }
 end
 
-function TopFit:IsCandidateProfessionAvailable(candidate, context)
+function TopFit.IsCandidateProfessionAvailable(candidate, context)
     if not candidate.professionSkillLine then
         return true
     end
@@ -79,7 +79,7 @@ function TopFit:IsGemCandidateAvailable(candidate, context)
     if (candidate.minChromiePhase or 1) > context.phase then
         return false
     end
-    if not self:IsCandidateProfessionAvailable(candidate, context) then
+    if not self.IsCandidateProfessionAvailable(candidate, context) then
         return false
     end
     if candidate.uniqueGroup and candidate.uniqueLimit then
@@ -91,7 +91,7 @@ function TopFit:IsGemCandidateAvailable(candidate, context)
     return true
 end
 
-function TopFit:GemContributesColor(candidate, color)
+function TopFit.GemContributesColor(candidate, color)
     if color == "META" then
         return Contains(candidate.colors, "META")
     end
@@ -100,24 +100,24 @@ end
 
 function TopFit:GemFitsSocket(candidate, socketColor)
     if socketColor == "META" then
-        return self:GemContributesColor(candidate, "META")
+        return self.GemContributesColor(candidate, "META")
     end
-    return not self:GemContributesColor(candidate, "META")
+    return not self.GemContributesColor(candidate, "META")
 end
 
 function TopFit:GemMatchesSocket(candidate, socketColor)
     if socketColor == "PRISMATIC" then
-        return not self:GemContributesColor(candidate, "META")
+        return not self.GemContributesColor(candidate, "META")
     end
-    return self:GemContributesColor(candidate, socketColor)
+    return self.GemContributesColor(candidate, socketColor)
 end
 
 function TopFit:CountGemColors(gems)
     local counts = { RED = 0, YELLOW = 0, BLUE = 0 }
     for _, gem in ipairs(gems or {}) do
-        if not self:GemContributesColor(gem, "META") then
+        if not self.GemContributesColor(gem, "META") then
             for color in pairs(counts) do
-                if self:GemContributesColor(gem, color) then
+                if self.GemContributesColor(gem, color) then
                     counts[color] = counts[color] + 1
                 end
             end
@@ -126,7 +126,7 @@ function TopFit:CountGemColors(gems)
     return counts
 end
 
-function TopFit:IsMetaConditionSatisfied(metaGem, colorCounts)
+function TopFit.IsMetaConditionSatisfied(metaGem, colorCounts)
     local condition = metaGem.metaCondition
     if not condition then
         return true
@@ -141,15 +141,15 @@ function TopFit:IsMetaConditionSatisfied(metaGem, colorCounts)
     for _, comparison in ipairs(condition.comparisons or {}) do
         local left = colorCounts[comparison.left] or 0
         local right = colorCounts[comparison.right] or 0
-        if comparison.op == ">" and not (left > right) then
+        if comparison.op == ">" and left <= right then
             return false
-        elseif comparison.op == ">=" and not (left >= right) then
+        elseif comparison.op == ">=" and left < right then
             return false
-        elseif comparison.op == "<" and not (left < right) then
+        elseif comparison.op == "<" and left >= right then
             return false
-        elseif comparison.op == "<=" and not (left <= right) then
+        elseif comparison.op == "<=" and left > right then
             return false
-        elseif comparison.op == "==" and not (left == right) then
+        elseif comparison.op == "==" and left ~= right then
             return false
         end
     end
@@ -199,7 +199,7 @@ function TopFit:ValidateGemLoadout(socketColors, gems, context)
 
     local colorCounts = self:CountGemColors(gems)
     for _, gem in ipairs(gems or {}) do
-        if self:GemContributesColor(gem, "META") and not self:IsMetaConditionSatisfied(gem, colorCounts) then
+        if self.GemContributesColor(gem, "META") and not self.IsMetaConditionSatisfied(gem, colorCounts) then
             return false, "meta-inactive"
         end
     end
@@ -225,7 +225,7 @@ function TopFit:IsEnchantCandidateAvailable(candidate, context, slotID, item)
     if (candidate.minChromiePhase or 1) > context.phase then
         return false
     end
-    if not self:IsCandidateProfessionAvailable(candidate, context) then
+    if not self.IsCandidateProfessionAvailable(candidate, context) then
         return false
     end
     if slotID and not Contains(candidate.slots, slotID) then
@@ -259,6 +259,6 @@ function TopFit:GetEnchantCandidatesForItem(slotID, item, context)
     return SortedByID(result, "enchantID")
 end
 
-function TopFit:CandidateHasUnscoredEffect(candidate)
+function TopFit.CandidateHasUnscoredEffect(candidate)
     return candidate.effects ~= nil and #candidate.effects > 0
 end
