@@ -45,6 +45,10 @@ Cached item tables receive:
 - `baseSocketColors`: ordered original socket colors;
 - `socketBonusID`: SpellItemEnchantment ID for the item's socket bonus.
 
+`data/socket_bonuses.lua` resolves the 158 socket-bonus IDs referenced by these items against a
+pinned 3.3.5.12340 SpellItemEnchantment export. 156 are fixed stat bonuses. Two internal test-item
+bonuses use item-level scaling and remain explicit unscored effects rather than guessed values.
+
 Profession-added sockets are not part of base metadata. Eternal Belt Buckle, Socket Bracer, and
 Socket Gloves are modeled as enchant-candidate effects instead.
 
@@ -59,3 +63,17 @@ python tools/generate_item_sockets.py /path/to/item_template.sql \
 
 The generator uses only Python's standard library and writes `data/item_sockets.lua` by default.
 Commit the regenerated file together with any source-ref change so data provenance remains explicit.
+
+## Socket-bonus regeneration
+
+Use the pinned 3.3.5.12340 SpellItemEnchantment SQL export together with the AzerothCore item table:
+
+```bash
+python tools/generate_socket_bonuses.py /path/to/item_template.sql /path/to/SpellItemEnchantment.sql \\
+  --item-source-ref 3df225f8cb890379816794c6699cdc891d738e79 \\
+  --enchant-source-ref 507349f1c69c747e0d28c99236de3b3d0c6d542c
+```
+
+The generator emits only bonus IDs actually referenced by equippable socketed items. Fixed stat
+bonuses are mapped from the 3.3.5 ItemModType values; unsupported scaling effects remain tagged and
+unscored.

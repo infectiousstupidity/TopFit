@@ -259,6 +259,21 @@ function TopFit:GetEnchantCandidatesForItem(slotID, item, context)
     return SortedByID(result, "enchantID")
 end
 
+function TopFit:IsSocketModificationCandidateAvailable(candidate, context, slotID, item)
+    return self:IsEnchantCandidateAvailable(candidate, context, slotID, item)
+end
+
+function TopFit:GetSocketModificationCandidatesForItem(slotID, item, context)
+    context = context or self:BuildCandidateContext()
+    local result = {}
+    for _, candidate in ipairs(self.socketModificationCandidates or {}) do
+        if self:IsSocketModificationCandidateAvailable(candidate, context, slotID, item) then
+            tinsert(result, candidate)
+        end
+    end
+    return SortedByID(result, "modificationID")
+end
+
 function TopFit.CandidateHasUnscoredEffect(candidate)
     return candidate.effects ~= nil and #candidate.effects > 0
 end
