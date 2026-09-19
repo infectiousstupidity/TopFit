@@ -26,6 +26,21 @@ until they are rebuilt from verified WotLK 3.3.5a / ChromieCraft data.
 
 Actual gems and enchants already present on items are still read from live item tooltips.
 
+Gem and enchant candidates
+--------------------------
+
+The addon now has a separate ChromieCraft-aware candidate model for gems and deterministic enchants.
+It understands physical socket fit versus socket-bonus matching, hybrid/prismatic color contribution,
+meta activation requirements, profession skill requirements, Jewelcrafter gem limits, item/slot
+restrictions, and ChromieCraft progression gates.
+
+Current Phase 3 includes Northrend rare gems, Jewelcrafter Dragon's Eyes, Ulduar Stormjewels, and
+Wrath meta gems. Patch 3.2 / Trial of the Crusader epic gems are present in the data but remain
+phase-gated until Phase 4.
+
+Proc, on-use, movement, and similar non-static enchant effects are preserved as explicit effect tags
+rather than converted into guessed average stat values.
+
 Owned inventory
 ---------------
 
@@ -39,8 +54,8 @@ remain recommendations only until they are withdrawn.
 
 Not implemented yet
 -------------------
-- automatic gem/enchant combination optimization;
-- meta-gem and profession restriction solving;
+- wiring gem/enchant candidate sets into the whole-set optimizer;
+- verified item socket-layout data for already-socketed items;
 - Top-N alternative gear sets;
 - source-aware upgrade paths;
 - spec-specific simulation models.
@@ -56,6 +71,7 @@ Run the pure Lua tests from the repository root with:
     for test_file in tests/test_*.lua; do lua5.1 "$test_file"; done
 
 See docs/chromiecraft-baseline.md for the baseline code review and keep/remove decisions.
+See docs/candidate-model.md for gem/enchant model rules and data provenance.
 
 Credits
 -------
