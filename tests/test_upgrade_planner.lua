@@ -111,8 +111,8 @@ function tests.combinationMustActuallyUseCandidate()
         },
     }
 
-    assertTrue(TopFit:CombinationUsesUpgradeCandidate(combo, 300), "selected candidate found")
-    assertFalse(TopFit:CombinationUsesUpgradeCandidate(combo, 301), "unselected candidate absent")
+    assertTrue(TopFit.CombinationUsesUpgradeCandidate(combo, 300), "selected candidate found")
+    assertFalse(TopFit.CombinationUsesUpgradeCandidate(combo, 301), "unselected candidate absent")
 end
 
 function tests.resultRequiresPositiveWholeSetGain()

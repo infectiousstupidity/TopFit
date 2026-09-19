@@ -270,7 +270,7 @@ function TopFit:SelectUpgradeCandidateQueue(candidates)
     return result
 end
 
-function TopFit:CombinationUsesUpgradeCandidate(combination, itemID)
+function TopFit.CombinationUsesUpgradeCandidate(combination, itemID)
     for _, location in pairs((combination and combination.items) or {}) do
         if location.upgradeCandidateID == itemID then
             return true
@@ -280,7 +280,7 @@ function TopFit:CombinationUsesUpgradeCandidate(combination, itemID)
 end
 
 function TopFit:RecordUpgradeResult(candidate, combination, baselineScore)
-    if not candidate or not combination or not self:CombinationUsesUpgradeCandidate(combination, candidate.itemID) then
+    if not candidate or not combination or not self.CombinationUsesUpgradeCandidate(combination, candidate.itemID) then
         return nil
     end
 
