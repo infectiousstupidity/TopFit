@@ -158,7 +158,10 @@ function TopFit:RefreshSetReadiness()
             frame.setScoreFontString:SetText("|cffffcc00No weights configured|r")
             frame.readinessOverrodeScore = true
         elseif frame.readinessOverrodeScore then
-            frame.setScoreFontString:SetText("Total Score: -")
+            local currentText = frame.setScoreFontString.GetText and frame.setScoreFontString:GetText()
+            if not currentText or string.find(currentText, "No weights configured", 1, true) then
+                frame.setScoreFontString:SetText("Total Score: -")
+            end
             frame.readinessOverrodeScore = nil
         end
     end
