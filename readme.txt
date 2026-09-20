@@ -140,3 +140,14 @@ Credits
 
 Original TopFit by Mirroar, continued by Zae. This fork retains the original project history and
 credits while adapting the addon for ChromieCraft.
+
+
+UI stabilization
+----------------
+
+The progress frame now treats an unconfigured weight set explicitly instead of silently calculating
+a zero-score result. Plugin tabs initialize deterministically, the active tab stays visibly selected,
+Start and upgrade scanning are disabled until at least one non-zero weight exists, and the Weights &
+Caps tab exposes a clear empty state plus an Import action.
+
+See docs/ui-stabilization.md for the compatibility-layer details.
