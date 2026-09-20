@@ -67,9 +67,7 @@ function TopFit:RefreshWeightsPluginState(statsFrame)
     if hasConfigured then
         statsFrame.emptyWeightsText:Hide()
     else
-        statsFrame.emptyWeightsText:SetText(
-            "No stat weights configured.\nAdd a stat or import a Pawn/TopFit set."
-        )
+        statsFrame.emptyWeightsText:SetText("No stat weights configured.\nAdd a stat or import a Pawn/TopFit set.")
         statsFrame.emptyWeightsText:Show()
     end
 end
