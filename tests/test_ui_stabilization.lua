@@ -68,6 +68,9 @@ local score = {
     SetText = function(self, value)
         self.text = value
     end,
+    GetText = function(self)
+        return self.text
+    end,
 }
 TopFit.ProgressFrame = {
     selectedSet = "empty",
